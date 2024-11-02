@@ -8,4 +8,4 @@ s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 features:
   app: false
   iife: false
-  s::cli.fargs.default: dev
+  t::tag::s::cli.fargs.default: dev

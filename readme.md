@@ -1,18 +1,20 @@
 # @fnet/shell-flow
 
-This project is designed to assist with executing shell commands within the Node.js environment. It provides a simple way to run multiple shell commands either sequentially, in parallel, or forked, with various error handling policies. The project aims to streamline command execution and error management for users who need to run complex sequences of operations in a shell environment.
+## Introduction
+
+The `@fnet/shell-flow` is a utility designed to execute a series of shell commands with a variety of error-handling options. It provides a simple way to manage command execution using different strategies, ensuring robust task automation. Whether you need to run commands sequentially, in parallel, or fork them, `@fnet/shell-flow` makes process coordination and error management straightforward.
 
 ## How It Works
 
-The main functionality of this project is to execute given shell commands based on user-defined formats and error handling strategies. Users provide a list of commands either as strings for sequential execution or as objects specifying parallel or forked execution. The system handles the execution process and manages errors according to the specified policy, such as continuing on error or logging errors without interrupting the flow.
+`@fnet/shell-flow` operates by allowing users to define a list of shell commands they want to run and specifying how errors should be handled during execution. You can choose to stop the process when an error occurs, log the error and continue, or even specify different behaviors based on the command execution type (sequential, parallel, or forked).
 
 ## Key Features
 
-- **Sequential Execution**: Execute commands one after another, with the option to stop on error or continue.
-- **Parallel Execution**: Run multiple commands concurrently, with optional error policies like stopping or continuing on errors.
-- **Forked Execution**: Execute commands in a forked manner, allowing errors to be logged or reported to a parent process.
-- **Error Handling Policies**: Customize how errors are handled during command execution, providing flexibility based on user needs.
+- **Sequential Execution**: Run commands one after another, halting or logging upon errors based on user preference.
+- **Parallel Execution**: Execute multiple commands simultaneously, with optional error handling to stop or log errors.
+- **Fork Execution**: Start commands independently, with error notifications tailored to user settings.
+- **Customizable Error Policies**: Decide whether to stop, log, or handle errors specifically in different execution contexts.
 
 ## Conclusion
 
-The `@fnet/shell-flow` project is a useful tool for those needing to run and manage multiple shell commands efficiently. By offering structured command execution and flexible error handling, it simplifies complex operations that involve multiple shell interactions in a Node.js environment.
+`@fnet/shell-flow` offers a practical solution for automating shell command execution with flexible error handling strategies. By adjusting how errors are managed, you can streamline your command workflows with confidence, suiting various automation needs efficiently.

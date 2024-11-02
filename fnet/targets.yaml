@@ -1,7 +1,7 @@
 npm-default:
   type: npm
-  enabled: false
-  version: "0.1.0"  
+  enabled: true
+  version: "0.1.1"
   params:
-    # bin: some-bin-name
+    bin: fnet-shell-flow
     name: "@fnet/shell-flow"

@@ -2,34 +2,42 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 type: object
 properties:
   commands:
-    type: array
-    description: Array of shell commands or command groups to execute.
-    items:
-      anyOf:
-        - type: string
-          description: Sequential command to execute.
-        - type: object
-          description: Command group with specific execution policy.
-          properties:
-            parallel:
-              type: array
-              description: Commands to execute in parallel.
-              items:
-                type: string
-                description: Command to execute in parallel group.
-            fork:
-              type: array
-              description: Commands to execute in fork.
-              items:
-                type: string
-                description: Command to execute in fork group.
-            onError:
-              type: string
-              description: Error handling policy for the command group.
-              enum: [stop, continue, logOnly, notifyParent]
-  continueOnError:
-    type: boolean
-    description: If true, continues execution even if a command fails in sequential mode.
-    default: false
+    description: Command string or array of commands or command groups to execute.
+    oneOf:
+      - type: string
+      - type: array
+        items:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: false
+              properties:
+                parallel:
+                  type: array
+                  items: 
+                    type: string
+                  description: Array of commands to execute in parallel.
+                fork:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of commands to execute in fork.
+                onError:
+                  type: string
+                  enum: ["stop", "continue", "log"]
+                  description: |
+                    Error handling policy:
+                    "stop" - Stop execution on error,
+                    "continue" - Continue execution on error,
+                    "log" - Log error and continue.
+  onError:
+    type: string
+    default: "stop"
+    enum: ["stop", "continue", "log"]
+    description: |
+      Global error handling policy:
+      "stop" - Stop execution on error,
+      "continue" - Continue execution on error,
+      "log" - Log error and continue.
 required:
   - commands
