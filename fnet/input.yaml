@@ -1,0 +1,35 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+type: object
+properties:
+  commands:
+    type: array
+    description: Array of shell commands or command groups to execute.
+    items:
+      anyOf:
+        - type: string
+          description: Sequential command to execute.
+        - type: object
+          description: Command group with specific execution policy.
+          properties:
+            parallel:
+              type: array
+              description: Commands to execute in parallel.
+              items:
+                type: string
+                description: Command to execute in parallel group.
+            fork:
+              type: array
+              description: Commands to execute in fork.
+              items:
+                type: string
+                description: Command to execute in fork group.
+            onError:
+              type: string
+              description: Error handling policy for the command group.
+              enum: [stop, continue, logOnly, notifyParent]
+  continueOnError:
+    type: boolean
+    description: If true, continues execution even if a command fails in sequential mode.
+    default: false
+required:
+  - commands
