@@ -3,41 +3,40 @@ type: object
 properties:
   commands:
     description: Command string or array of commands or command groups to execute.
-    oneOf:
-      - type: string
-      - type: array
+    type: array
+    items:
+      oneOf:
+        - type: string
+        - $ref: "#/definitions/commandGroup"
+  onError:
+    type: string
+    default: "stop"
+    enum: ["stop", "continue", "log"]
+    description: |
+      Global error handling policy: "stop", "continue", or "log".
+required:
+  - commands
+
+definitions:
+  commandGroup:
+    type: object
+    additionalProperties: false
+    properties:
+      parallel:
+        type: array
         items:
           oneOf:
             - type: string
-            - type: object
-              properties:
-                parallel:
-                  type: array
-                  items:
-                    type: string
-                onError:
-                  type: string
-                  enum: ["stop", "continue"]
-                  description: Error handling policy for parallel commands.
-              required:
-                - parallel
-            - type: object
-              properties:
-                fork:
-                  type: array
-                  items:
-                    type: string
-                onError:
-                  type: string
-                  enum: ["log", "notifyParent"]
-                  description: Error handling policy for forked commands.
-              required:
-                - fork
-  onError:
-    type: string
-    enum: ["stop", "continue", "log"]
-    default: "stop"
-    description: |
-      Error handling policy: "stop", "continue", or "log".
-required:
-  - commands
+            - $ref: "#/definitions/commandGroup"
+        description: Array of commands to execute in parallel.
+      fork:
+        type: array
+        items:
+          oneOf:
+            - type: string
+            - $ref: "#/definitions/commandGroup"
+        description: Array of commands to execute in fork.
+      onError:
+        type: string
+        enum: ["stop", "continue", "log"]
+        description: Error handling policy for this command group.

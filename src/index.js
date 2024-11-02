@@ -1,7 +1,4 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execPromise = promisify(exec);
+import { spawn } from 'node:child_process';
 
 /**
  * Executes a sequence of shell commands with a flexible error handling policy.
@@ -87,17 +84,31 @@ function handleFork(forkCommands, onError) {
 }
 
 /**
- * Executes a single shell command and logs output.
+ * Executes a single shell command and streams output to active stdout and stderr.
+ *
+ * @param {string} command - The shell command to execute.
+ * @returns {Promise<void>} Resolves when the command completes.
+ */
+/**
+ * Executes a single shell command and streams output to active stdout and stderr.
  *
  * @param {string} command - The shell command to execute.
  * @returns {Promise<void>} Resolves when the command completes.
  */
 async function executeCommand(command) {
-  try {
-    const { stdout, stderr } = await execPromise(command);
-    if (stdout) console.log(`Output: ${stdout}`);
-    if (stderr) console.error(`Error: ${stderr}`);
-  } catch (error) {
-    throw new Error(`Command failed: ${command}`);
-  }
+  return new Promise((resolve, reject) => {
+    const process = spawn(command, { shell: true, stdio: 'inherit' }); // Run in shell for command chaining
+
+    process.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed: ${command}`));
+      }
+    });
+
+    process.on('error', (error) => {
+      reject(new Error(`Process error: ${error.message}`));
+    });
+  });
 }
