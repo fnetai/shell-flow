@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import path from 'node:path';
 
 /**
  * Executes a sequence of shell commands with a flexible error handling policy.
@@ -8,7 +9,7 @@ import { spawn } from 'node:child_process';
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * 
  * Command formats:
- * - Sequential: `"command"` (default behavior)
+ * - Sequential (default): `"command"` or `steps: [...]`
  * - Parallel: `{ parallel: ["command1", "command2"], onError: "stop" }`
  * - Fork: `{ fork: ["command1", "command2"], onError: "log" }`
  *
@@ -21,24 +22,29 @@ export default async ({ commands, onError = "stop" }) => {
 };
 
 /**
- * Processes an array of commands, supporting sequential, parallel, and forked executions with error policies.
+ * Processes an array of commands, supporting sequential, parallel, forked, and steps executions with error policies.
  *
  * @param {Array} commands - Array of commands or command groups.
  * @param {string} onError - Determines the error handling policy for all modes.
+ * @param {Object} [env] - Environment variables to pass to each command.
+ * @param {string} [wdir] - Working directory for each command group.
  * @returns {Promise<void>} Resolves when all sequential commands in the array complete.
  */
-async function processCommands(commands, onError) {
+async function processCommands(commands, onError, env = process.env, wdir = process.cwd()) {
   for (const cmd of commands) {
     try {
       if (typeof cmd === 'string') {
         // Execute a single command sequentially
-        await executeCommand(cmd);
+        await executeCommand(cmd, env, wdir);
+      } else if (cmd.steps) {
+        // Execute steps (sequential) commands if explicitly specified
+        await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
       } else if (cmd.parallel) {
         // Parallel command execution with error handling
-        await handleParallel(cmd.parallel, cmd.onError || onError);
+        await handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
       } else if (cmd.fork) {
         // Forked command execution with error handling
-        handleFork(cmd.fork, cmd.onError || onError);
+        handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
       }
     } catch (error) {
       console.error(`Error occurred: ${error.message}`);
@@ -53,9 +59,11 @@ async function processCommands(commands, onError) {
  *
  * @param {Array} parallelCommands - Array of commands to execute in parallel.
  * @param {string} onError - Error handling policy for parallel commands: "stop" or "continue".
+ * @param {Object} env - Environment variables for the parallel commands.
+ * @param {string} wdir - Working directory for the parallel commands.
  */
-async function handleParallel(parallelCommands, onError) {
-  const tasks = parallelCommands.map((cmd) => processCommands([cmd], onError));
+async function handleParallel(parallelCommands, onError, env, wdir) {
+  const tasks = parallelCommands.map((cmd) => processCommands([cmd], onError, env, wdir));
   if (onError === 'stop') {
     await Promise.all(tasks); // Waits for all to complete, throws if any error
   } else {
@@ -68,11 +76,13 @@ async function handleParallel(parallelCommands, onError) {
  *
  * @param {Array} forkCommands - Array of commands to execute in fork.
  * @param {string} onError - Error handling policy for forked commands: "log" or "notifyParent".
+ * @param {Object} env - Environment variables for the forked commands.
+ * @param {string} wdir - Working directory for the forked commands.
  */
-function handleFork(forkCommands, onError) {
+function handleFork(forkCommands, onError, env, wdir) {
   forkCommands.forEach(async (cmd) => {
     try {
-      await processCommands([cmd], onError);
+      await processCommands([cmd], onError, env, wdir);
     } catch (error) {
       if (onError === 'notifyParent') {
         console.error(`Fork error reported: ${error.message}`);
@@ -87,17 +97,16 @@ function handleFork(forkCommands, onError) {
  * Executes a single shell command and streams output to active stdout and stderr.
  *
  * @param {string} command - The shell command to execute.
+ * @param {Object} env - Environment variables for the command.
+ * @param {string} wdir - Working directory for the command.
  * @returns {Promise<void>} Resolves when the command completes.
  */
-/**
- * Executes a single shell command and streams output to active stdout and stderr.
- *
- * @param {string} command - The shell command to execute.
- * @returns {Promise<void>} Resolves when the command completes.
- */
-async function executeCommand(command) {
+async function executeCommand(command, env, wdir) {
   return new Promise((resolve, reject) => {
-    const process = spawn(command, { shell: true, stdio: 'inherit' }); // Run in shell for command chaining
+    // Resolve the working directory to an absolute path
+    const cwd = wdir ? path.resolve(wdir) : process.cwd();
+
+    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd }); // Pass env and cwd variables
 
     process.on('close', (code) => {
       if (code === 0) {
