@@ -3,7 +3,7 @@ name: shell-flow
 ai::name: "@fnet/shell-flow"
 s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 
-# input: g::file://fnet/input.yaml
+input: g::file://fnet/input.yaml
 
 features:
   app: false

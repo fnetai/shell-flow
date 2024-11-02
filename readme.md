@@ -1,20 +1,18 @@
 # @fnet/shell-flow
 
-## Introduction
-
-The `@fnet/shell-flow` is a utility designed to execute a series of shell commands with a variety of error-handling options. It provides a simple way to manage command execution using different strategies, ensuring robust task automation. Whether you need to run commands sequentially, in parallel, or fork them, `@fnet/shell-flow` makes process coordination and error management straightforward.
+@fnet/shell-flow is a utility designed to simplify the execution of shell commands in a structured and flexible manner. It allows users to execute commands sequentially, in parallel, or as independent processes ("forks"), all while managing error handling based on user preferences.
 
 ## How It Works
 
-`@fnet/shell-flow` operates by allowing users to define a list of shell commands they want to run and specifying how errors should be handled during execution. You can choose to stop the process when an error occurs, log the error and continue, or even specify different behaviors based on the command execution type (sequential, parallel, or forked).
+This utility operates by accepting a collection of shell commands to be executed. Users can specify these commands either individually or grouped for different execution strategies (sequential, parallel, or forked). The utility executes these commands and allows the user to define how errors should be handled, offering policies like stopping on the first error, logging errors and continuing, or treating errors in forked processes differently.
 
 ## Key Features
 
-- **Sequential Execution**: Run commands one after another, halting or logging upon errors based on user preference.
-- **Parallel Execution**: Execute multiple commands simultaneously, with optional error handling to stop or log errors.
-- **Fork Execution**: Start commands independently, with error notifications tailored to user settings.
-- **Customizable Error Policies**: Decide whether to stop, log, or handle errors specifically in different execution contexts.
+- **Sequential Execution**: Run commands one after the other, ensuring each completes before moving to the next.
+- **Parallel Execution**: Execute multiple commands at the same time for faster processing, with customizable error handling.
+- **Forked Execution**: Run commands independently of each other, perfect for non-blocking tasks.
+- **Flexible Error Handling**: Choose between stopping on errors, logging them, or notifying the parent process in forked executions.
 
 ## Conclusion
 
-`@fnet/shell-flow` offers a practical solution for automating shell command execution with flexible error handling strategies. By adjusting how errors are managed, you can streamline your command workflows with confidence, suiting various automation needs efficiently.
+@fnet/shell-flow offers a straightforward way to manage and execute multiple shell commands efficiently with customizable error handling capabilities. It is useful for users needing to automate command sequences while maintaining control over how errors are processed.

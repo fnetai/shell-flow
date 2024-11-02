@@ -10,34 +10,34 @@ properties:
           oneOf:
             - type: string
             - type: object
-              additionalProperties: false
               properties:
                 parallel:
                   type: array
-                  items: 
+                  items:
                     type: string
-                  description: Array of commands to execute in parallel.
+                onError:
+                  type: string
+                  enum: ["stop", "continue"]
+                  description: Error handling policy for parallel commands.
+              required:
+                - parallel
+            - type: object
+              properties:
                 fork:
                   type: array
                   items:
                     type: string
-                  description: Array of commands to execute in fork.
                 onError:
                   type: string
-                  enum: ["stop", "continue", "log"]
-                  description: |
-                    Error handling policy:
-                    "stop" - Stop execution on error,
-                    "continue" - Continue execution on error,
-                    "log" - Log error and continue.
+                  enum: ["log", "notifyParent"]
+                  description: Error handling policy for forked commands.
+              required:
+                - fork
   onError:
     type: string
-    default: "stop"
     enum: ["stop", "continue", "log"]
+    default: "stop"
     description: |
-      Global error handling policy:
-      "stop" - Stop execution on error,
-      "continue" - Continue execution on error,
-      "log" - Log error and continue.
+      Error handling policy: "stop", "continue", or "log".
 required:
   - commands

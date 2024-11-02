@@ -1,18 +1,17 @@
-# Developer Guide for @fnet/shell-flow
+# @fnet/shell-flow Developer Guide
 
 ## Overview
-
-The `@fnet/shell-flow` library provides a streamlined way to execute shell commands in various modes, including sequential, parallel, and forked executions. It features flexible error handling policies, allowing developers to decide whether a series of commands should stop on error, continue execution, or simply log the error. This can be particularly useful for automating complex workflows and handling shell scripts within Node.js applications.
+The `@fnet/shell-flow` library provides a structured way to execute shell commands within a Node.js environment. Developers can utilize its functionality to run sequences of commands with flexible error handling policies. The library allows for sequential execution of commands, as well as parallel and forked executions, offering diverse options for managing script automation and execution flows effectively.
 
 ## Installation
 
-To install the `@fnet/shell-flow` library, use npm or yarn as follows:
+To install the `@fnet/shell-flow` library in your project, you can use either npm or yarn. Simply run one of the following commands in your terminal:
 
 ```bash
 npm install @fnet/shell-flow
 ```
 
-or
+Or, if you prefer using yarn:
 
 ```bash
 yarn add @fnet/shell-flow
@@ -20,80 +19,66 @@ yarn add @fnet/shell-flow
 
 ## Usage
 
-Here's how you can use the library to run shell commands with different configurations:
-
-### Basic Sequential Execution
+Here is how you can use the `@fnet/shell-flow` library to execute commands:
 
 ```javascript
 import shellFlow from '@fnet/shell-flow';
 
-shellFlow({
-  commands: 'echo "Hello, World!"',
-  onError: 'stop' // Default error policy
+// Basic example with sequential execution
+(async () => {
+  try {
+    await shellFlow({
+      commands: [
+        'echo "Starting process..."',
+        'node -v', // Example command to run Node.js version
+        'echo "All done!"'
+      ],
+    });
+  } catch (error) {
+    console.error(`Execution halted: ${error.message}`);
+  }
+})();
+```
+
+In this example, the commands are executed in sequence, and execution stops if any command fails (based on the default `onError = "stop"` policy).
+
+## Examples
+
+### Sequential Execution
+
+```javascript
+await shellFlow({
+  commands: [
+    'echo "This is the first command"',
+    'echo "This is the second command"',
+  ],
+  onError: 'stop', // Halts on any error
 });
 ```
-This runs the command sequentially, stopping upon encountering an error.
 
 ### Parallel Execution
 
 ```javascript
-import shellFlow from '@fnet/shell-flow';
-
-shellFlow({
-  commands: [{ parallel: ['echo "First"', 'echo "Second"'] }],
-  onError: 'continue' // Continue executing even if some commands fail
+await shellFlow({
+  commands: [
+    { parallel: ['echo "Task 1"', 'echo "Task 2"'], onError: 'continue' }
+  ],
 });
 ```
-Commands inside the `parallel` array are executed simultaneously. The `onError` policy here allows continuation despite errors in individual commands.
+In parallel execution, two commands run simultaneously. The `onError: 'continue'` policy ensures that execution moves forward despite errors in individual commands.
 
 ### Forked Execution
 
 ```javascript
-import shellFlow from '@fnet/shell-flow';
-
-shellFlow({
-  commands: [{ fork: ['echo "Fork 1"', 'echo "Fork 2"'], onError: 'log' }],
-});
-```
-Forked commands run independently of each other, logging any errors they encounter.
-
-## Examples
-
-### Example 1: Mixed Execution
-
-This example mixes sequential and parallel commands:
-
-```javascript
-import shellFlow from '@fnet/shell-flow';
-
-shellFlow({
+await shellFlow({
   commands: [
-    'echo "Sequential Command 1"',
-    { parallel: ['echo "Parallel 1"', 'echo "Parallel 2"'] },
-    'echo "Sequential Command 2"'
+    { fork: ['echo "Forked task A"', 'echo "Forked task B"'], onError: 'log' }
   ],
-  onError: 'log' // Errors will be logged, but not stop execution
 });
 ```
 
-### Example 2: Complex Error Handling
+Here, forked execution allows commands to run separately without affecting each other, with errors being logged as they occur.
 
-Illustrating a fork with specific error handling policies:
+## Acknowledgements
 
-```javascript
-import shellFlow from '@fnet/shell-flow';
-
-shellFlow({
-  commands: [
-    { fork: ['echo "Forked A"', 'exit 1'], onError: 'notifyParent' },
-    'echo "This will execute"'
-  ],
-  onError: 'continue' // Parent continues regardless of errors in fork
-});
-```
-
-With `notifyParent`, even if a command in a fork group fails, the parent sequence operates according to its own `onError` policy.
-
-## Acknowledgement
-
-If required, this section may credit any external libraries used within `@fnet/shell-flow`, ensuring compliance with their licenses and contributions.
+Special thanks to all contributors who have helped develop and maintain the `@fnet/shell-flow` library, ensuring a reliable and efficient tool for managing shell command executions in Node.js.
