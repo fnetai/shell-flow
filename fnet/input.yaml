@@ -7,7 +7,7 @@ properties:
     items:
       oneOf:
         - type: string
-        - $ref: "#/definitions/commandGroup"
+        - $ref: "#/$defs/commandGroup"
   onError:
     type: string
     default: "stop"
@@ -17,7 +17,7 @@ properties:
 required:
   - commands
 
-definitions:
+$defs:
   commandGroup:
     type: object
     additionalProperties: false
@@ -27,21 +27,21 @@ definitions:
         items:
           oneOf:
             - type: string
-            - $ref: "#/definitions/commandGroup"
+            - $ref: "#/$defs/commandGroup"
         description: Array of commands to execute sequentially in steps.
       parallel:
         type: array
         items:
           oneOf:
             - type: string
-            - $ref: "#/definitions/commandGroup"
+            - $ref: "#/$defs/commandGroup"
         description: Array of commands to execute in parallel.
       fork:
         type: array
         items:
           oneOf:
             - type: string
-            - $ref: "#/definitions/commandGroup"
+            - $ref: "#/$defs/commandGroup"
         description: Array of commands to execute in fork.
       env:
         type: object
