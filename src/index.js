@@ -92,6 +92,34 @@ function handleFork(forkCommands, onError, env, wdir) {
   });
 }
 
+
+/**
+ * Executes a single shell command and streams output to active stdout and stderr.
+ *
+ * @param {string} command - The shell command to execute.
+ * @param {Object} env - Environment variables for the command.
+ * @param {string} wdir - Working directory for the command.
+ * @returns {Promise<void>} Resolves when the command completes.
+ */
+async function executeCommand(command, env, wdir) {
+  return new Promise((resolve, reject) => {
+    const cwd = wdir ? path.resolve(wdir) : process.cwd();
+    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd });
+
+    process.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed: ${command}`));
+      }
+    });
+
+    process.on('error', (error) => {
+      reject(new Error(`Process error: ${error.message}`));
+    });
+  });
+}
+
 /**
  * Executes a sequence of shell commands using a temporary script file.
  * Handles nested command groups (parallel, fork, or steps) within the steps.
@@ -127,8 +155,18 @@ async function executeStepsWithScript(steps, env, wdir) {
         }
       });
       scriptContent += parallelCommands.join(' ') + (isWindows ? '' : '\nwait\n');
-    } else if (step.steps || step.fork) {
-      // Nested steps or fork: Process them directly (not inside the script)
+    } else if (step.fork) {
+      // Handle fork commands in the script (background processes)
+      const forkCommands = step.fork.map((cmd) => {
+        if (typeof cmd === 'string') {
+          return `${cmd} &`; // Run command as a background process
+        } else {
+          throw new Error('Nested groups are not supported inside fork in script mode.');
+        }
+      });
+      scriptContent += forkCommands.join(' ') + (isWindows ? '' : '\n');
+    } else if (step.steps) {
+      // Nested steps: Process them directly (not inside the script)
       await processCommands([step], "stop", env, cwd);
     } else {
       throw new Error('Invalid command structure in steps.');
@@ -142,8 +180,8 @@ async function executeStepsWithScript(steps, env, wdir) {
 
   try {
     // Write the script to a temporary file
-    await writeFile(scriptPath, scriptContent, { mode: 0o755 });
-
+    await writeFile(scriptPath, scriptContent, { mode: 0o755, encoding: 'utf8' });
+    
     // Execute the script
     await new Promise((resolve, reject) => {
       const process = spawn(interpreter, [scriptPath], {
@@ -171,31 +209,4 @@ async function executeStepsWithScript(steps, env, wdir) {
       console.error(`Failed to delete temp script: ${scriptPath}`, err)
     );
   }
-}
-
-/**
- * Executes a single shell command and streams output to active stdout and stderr.
- *
- * @param {string} command - The shell command to execute.
- * @param {Object} env - Environment variables for the command.
- * @param {string} wdir - Working directory for the command.
- * @returns {Promise<void>} Resolves when the command completes.
- */
-async function executeCommand(command, env, wdir) {
-  return new Promise((resolve, reject) => {
-    const cwd = wdir ? path.resolve(wdir) : process.cwd();
-    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd });
-
-    process.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Command failed: ${command}`));
-      }
-    });
-
-    process.on('error', (error) => {
-      reject(new Error(`Process error: ${error.message}`));
-    });
-  });
 }
