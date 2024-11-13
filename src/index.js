@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { writeFile, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 /**
@@ -7,18 +9,11 @@ import path from 'node:path';
  * @param {Object} args - The arguments object.
  * @param {Array} args.commands - Command string or array of commands or command groups to execute.
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
- * 
- * Command formats:
- * - Sequential (default): `"command"` or `steps: [...]`
- * - Parallel: `{ parallel: ["command1", "command2"], onError: "stop" }`
- * - Fork: `{ fork: ["command1", "command2"], onError: "log" }`
- *
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, onError = "stop" }) => {
+export default async ({ commands, onError = "stop"}) => {
   if (!Array.isArray(commands)) commands = [commands];
-
-  await processCommands(commands, onError);
+  await processCommands(commands, onError, process.env);
 };
 
 /**
@@ -38,7 +33,11 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
         await executeCommand(cmd, env, wdir);
       } else if (cmd.steps) {
         // Execute steps (sequential) commands if explicitly specified
-        await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
+        if (cmd.useScript) {
+          await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir);
+        } else {
+          await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
+        }
       } else if (cmd.parallel) {
         // Parallel command execution with error handling
         await handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
@@ -94,6 +93,56 @@ function handleFork(forkCommands, onError, env, wdir) {
 }
 
 /**
+ * Executes a sequence of shell commands using a temporary script file.
+ *
+ * @param {Array} steps - Array of shell commands to execute sequentially.
+ * @param {Object} env - Environment variables for the commands.
+ * @param {string} wdir - Working directory for the commands.
+ */
+async function executeStepsWithScript(steps, env, wdir) {
+  const cwd = wdir ? path.resolve(wdir) : process.cwd();
+  const tmpFileName = path.join(tmpdir(), `temp_script_${Date.now()}`);
+  const isWindows = process.platform === 'win32';
+
+  const scriptContent = isWindows ? steps.join(' && ') : steps.join('\n');
+  const scriptExtension = isWindows ? '.bat' : '.sh';
+  const scriptPath = `${tmpFileName}${scriptExtension}`;
+  const interpreter = isWindows ? 'cmd.exe' : 'sh';
+
+  try {
+    // Write the script to a temporary file
+    await writeFile(scriptPath, scriptContent, { mode: 0o755 });
+
+    // Execute the script
+    await new Promise((resolve, reject) => {
+      const process = spawn(interpreter, [scriptPath], {
+        shell: true,
+        stdio: 'inherit',
+        env,
+        cwd,
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Script execution failed with code: ${code}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(new Error(`Script process error: ${error.message}`));
+      });
+    });
+  } finally {
+    // Clean up the temporary file
+    await unlink(scriptPath).catch((err) =>
+      console.error(`Failed to delete temp script: ${scriptPath}`, err)
+    );
+  }
+}
+
+/**
  * Executes a single shell command and streams output to active stdout and stderr.
  *
  * @param {string} command - The shell command to execute.
@@ -103,10 +152,8 @@ function handleFork(forkCommands, onError, env, wdir) {
  */
 async function executeCommand(command, env, wdir) {
   return new Promise((resolve, reject) => {
-    // Resolve the working directory to an absolute path
     const cwd = wdir ? path.resolve(wdir) : process.cwd();
-
-    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd }); // Pass env and cwd variables
+    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd });
 
     process.on('close', (code) => {
       if (code === 0) {

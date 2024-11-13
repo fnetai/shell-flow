@@ -54,6 +54,12 @@ $defs:
         type: string
         enum: ["stop", "continue", "log"]
         description: Error handling policy for this command group.
+      useScript:
+        type: boolean
+        default: false
+        description: |
+          If true, steps commands in this group are executed via a temporary script file. 
+          Ignored for parallel and fork.
     oneOf:
       - required: ["steps"]
       - required: ["parallel"]
