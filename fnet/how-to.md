@@ -50,8 +50,7 @@ import runShellFlow from '@fnet/shell-flow';
         onError: 'log'
       },
       { 
-        fork: ['echo "Forked command 1"', 'echo "Forked command 2"'],
-        onError: 'notifyParent'
+        fork: ['echo "Forked command 1"', 'echo "Forked command 2"']
       }
     ],
   });

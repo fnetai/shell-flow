@@ -74,7 +74,7 @@ async function handleParallel(parallelCommands, onError, env, wdir) {
  * Executes forked commands with optional error handling policy.
  *
  * @param {Array} forkCommands - Array of commands to execute in fork.
- * @param {string} onError - Error handling policy for forked commands: "log" or "notifyParent".
+ * @param {string} onError - Error handling policy for forked commands: "log".
  * @param {Object} env - Environment variables for the forked commands.
  * @param {string} wdir - Working directory for the forked commands.
  */
@@ -83,15 +83,10 @@ function handleFork(forkCommands, onError, env, wdir) {
     try {
       await processCommands([cmd], onError, env, wdir);
     } catch (error) {
-      if (onError === 'notifyParent') {
-        console.error(`Fork error reported: ${error.message}`);
-      } else {
-        console.log(`Fork error (log): ${error.message}`);
-      }
+      console.error(`Fork error (log): ${error.message}`);
     }
   });
 }
-
 
 /**
  * Executes a single shell command and streams output to active stdout and stderr.
@@ -181,7 +176,7 @@ async function executeStepsWithScript(steps, env, wdir) {
   try {
     // Write the script to a temporary file
     await writeFile(scriptPath, scriptContent, { mode: 0o755, encoding: 'utf8' });
-    
+
     // Execute the script
     await new Promise((resolve, reject) => {
       const process = spawn(interpreter, [scriptPath], {
