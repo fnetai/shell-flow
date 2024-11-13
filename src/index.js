@@ -136,6 +136,11 @@ async function executeStepsWithScript(steps, env, wdir) {
   // Collect script content for steps
   let scriptContent = '';
 
+  // Add shebang line based on the platform
+  if (!isWindows) {
+    scriptContent += '#!/bin/sh\n\n';
+  }
+  
   for (const step of steps) {
     if (typeof step === 'string') {
       // Simple shell command, append to the script content
