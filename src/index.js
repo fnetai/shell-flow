@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-
+import { nanoid } from 'nanoid';
 /**
  * Executes a sequence of shell commands with a flexible error handling policy.
  *
@@ -11,7 +11,7 @@ import path from 'node:path';
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, onError = "stop"}) => {
+export default async ({ commands, onError = "stop" }) => {
   if (!Array.isArray(commands)) commands = [commands];
   await processCommands(commands, onError, process.env);
 };
@@ -94,20 +94,51 @@ function handleFork(forkCommands, onError, env, wdir) {
 
 /**
  * Executes a sequence of shell commands using a temporary script file.
+ * Handles nested command groups (parallel, fork, or steps) within the steps.
  *
- * @param {Array} steps - Array of shell commands to execute sequentially.
+ * @param {Array} steps - Array of shell commands or nested command groups to execute sequentially.
  * @param {Object} env - Environment variables for the commands.
  * @param {string} wdir - Working directory for the commands.
+ * @returns {Promise<void>} Resolves when all commands complete.
  */
 async function executeStepsWithScript(steps, env, wdir) {
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
-  const tmpFileName = path.join(tmpdir(), `temp_script_${Date.now()}`);
+  const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
   const isWindows = process.platform === 'win32';
 
-  const scriptContent = isWindows ? steps.join(' && ') : steps.join('\n');
   const scriptExtension = isWindows ? '.bat' : '.sh';
   const scriptPath = `${tmpFileName}${scriptExtension}`;
   const interpreter = isWindows ? 'cmd.exe' : 'sh';
+
+  // Collect script content for steps
+  let scriptContent = '';
+
+  for (const step of steps) {
+    if (typeof step === 'string') {
+      // Simple shell command, append to the script content
+      scriptContent += isWindows ? `${step} && ` : `${step}\n`;
+    } else if (step.parallel) {
+      // Handle parallel commands in the script
+      const parallelCommands = step.parallel.map((cmd) => {
+        if (typeof cmd === 'string') {
+          return `${cmd} &`; // Add `&` for background execution
+        } else {
+          throw new Error('Nested groups are not supported inside parallel in script mode.');
+        }
+      });
+      scriptContent += parallelCommands.join(' ') + (isWindows ? '' : '\nwait\n');
+    } else if (step.steps || step.fork) {
+      // Nested steps or fork: Process them directly (not inside the script)
+      await processCommands([step], "stop", env, cwd);
+    } else {
+      throw new Error('Invalid command structure in steps.');
+    }
+  }
+
+  // Trim trailing "&& " for Windows
+  if (isWindows) {
+    scriptContent = scriptContent.trimEnd().replace(/&&$/, '');
+  }
 
   try {
     // Write the script to a temporary file
