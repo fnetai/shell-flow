@@ -1,119 +1,108 @@
-# @fnet/shell-flow Developer Guide
+# Developer Guide for @fnet/shell-flow
 
 ## Overview
 
-The `@fnet/shell-flow` library provides a streamlined method for executing shell commands with various error-handling options. It allows you to run commands sequentially or in parallel, and supports complex workflows with nested command groups. The library is designed to help developers efficiently manage command execution in scripts or applications, making it easier to automate tasks that involve interacting with the system shell.
+The `@fnet/shell-flow` library provides developers with a streamlined way to execute shell commands in sequence or in parallel, with versatile error handling. This library can automate complex workflows and manage shell-based operations with ease. It supports sequential, parallel, forked, and grouped command execution while allowing flexible responses to command failures.
 
 ## Installation
 
-To include `@fnet/shell-flow` in your project, use npm or yarn for installation:
+To include `@fnet/shell-flow` in your project, run one of the following commands:
 
-```sh
+Using npm:
+```bash
 npm install @fnet/shell-flow
 ```
 
-or
-
-```sh
+Using yarn:
+```bash
 yarn add @fnet/shell-flow
 ```
 
 ## Usage
 
-The library's primary function is to execute shell commands with customizable error handling. You can specify commands as strings or groups, define execution flow (sequential, parallel, etc.), and determine what happens when an error occurs.
+Here's a basic guide on how to use the `@fnet/shell-flow` library in your projects.
 
-Here's how you can use the library in a real-world scenario:
+### Sequential and Parallel Command Execution
+
+You can execute a series of commands sequentially or in parallel. The execution flow can be customized based on success or failure criteria.
 
 ```javascript
 import shellFlow from '@fnet/shell-flow';
 
-const run = async () => {
+async function runCommands() {
   try {
     await shellFlow({
       commands: [
         'echo "Starting process..."',
-        { 
+        {
+          steps: [
+            'echo "Step 1: Preparation"',
+            'echo "Step 2: Execution"'
+          ],
+          onError: 'stop'
+        },
+        {
           parallel: [
-            'echo "Parallel command 1"',
-            'echo "Parallel command 2"'
+            'echo "Task A"',
+            'echo "Task B"'
           ],
           onError: 'continue'
         },
-        {
-          steps: [
-            'echo "Step 1 in a sequence"',
-            'echo "Step 2 in a sequence"'
-          ],
-          useScript: true
-        }
       ],
-      onError: 'log' // Continues execution and logs errors
+      onError: 'log'
     });
+    console.log('All commands executed successfully');
   } catch (error) {
-    console.error('Execution failed:', error.message);
+    console.error('Command execution failed:', error);
   }
-};
+}
 
-run();
+runCommands();
 ```
-
-### Command Groups
-
-- **Sequential Execution**: Pass an array of commands or steps, and they will be executed in order. You can group them using `steps`.
-- **Parallel Execution**: Use `parallel` to execute multiple commands simultaneously. Customize the error-handling strategy by specifying `onError`.
-- **Fork Execution**: Similar to parallel, but `fork` runs commands in separate processes.
-
-### Error Handling
-
-You can control error handling through the `onError` parameter:
-- `"stop"`: Stops execution upon encountering an error.
-- `"continue"`: Ignores errors and continues execution.
-- `"log"`: Logs errors while allowing the process to continue.
 
 ## Examples
 
-Here are some concise examples:
+### Example 1: Simple Sequential Execution
 
-### Sequential Commands
+This example demonstrates executing a series of shell commands in sequence. If any command fails, execution stops.
 
 ```javascript
-await shellFlow({
+import shellFlow from '@fnet/shell-flow';
+
+shellFlow({
   commands: [
-    'echo "First command"',
-    'echo "Second command"'
-  ]
-});
+    'echo "Hello World"',
+    'echo "This is a sequential command execution"',
+    'invalid-command' // This will cause the process to stop.
+  ],
+  onError: 'stop'
+})
+.catch((error) => console.error(error.message));
 ```
 
-### Parallel Commands with Error Logging
+### Example 2: Parallel Execution with Continued Processing
+
+Execute multiple commands in parallel where failure of one does not affect the others. A detailed log of each success and failure is maintained.
 
 ```javascript
-await shellFlow({
+import shellFlow from '@fnet/shell-flow';
+
+shellFlow({
   commands: [
     {
       parallel: [
-        'echo "Parallel command A"',
-        'invalidcommand' // This will be logged
+        'echo "Running Task 1"',
+        'invalid-task-command', // This will log an error but won't stop execution.
+        'echo "Running Task 3"'
       ],
-      onError: 'log'
+      onError: 'continue'
     }
   ]
-});
+})
+.then(() => console.log('Tasks completed'))
+.catch((error) => console.error('Some tasks failed:', error.message));
 ```
 
-### Forked Commands
+## Acknowledgement
 
-```javascript
-await shellFlow({
-  commands: [
-    {
-      fork: [
-        'echo "Fork command 1"',
-        'echo "Fork command 2"'
-      ]
-    }
-  ]
-});
-```
-
-By using `@fnet/shell-flow`, developers can manage shell command execution patterns efficiently, handling errors gracefully and customizing workflows as needed.
+Development of this library was influenced by the need for robust command-line tooling. We acknowledge the contributions of all collaborative efforts in the open-source community that enhance toolset interoperability and functionality.
