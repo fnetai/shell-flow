@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { nanoid } from 'nanoid';
+
 /**
  * Executes a sequence of shell commands with a flexible error handling policy.
  *
@@ -125,6 +125,7 @@ async function executeCommand(command, env, wdir) {
  * @returns {Promise<void>} Resolves when all commands complete.
  */
 async function executeStepsWithScript(steps, env, wdir) {
+  const { nanoid } = await import('nanoid');
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
   const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
   const isWindows = process.platform === 'win32';
