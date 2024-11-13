@@ -60,6 +60,11 @@ $defs:
         description: |
           If true, steps commands in this group are executed via a temporary script file. 
           Ignored for parallel and fork.
+      captureName:
+        type: string
+        description: |
+          If set, the output of the command group is captured and stored in a file with this name.
+          Ignored for parallel and fork.
     oneOf:
       - required: ["steps"]
       - required: ["parallel"]

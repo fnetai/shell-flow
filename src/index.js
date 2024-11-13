@@ -12,8 +12,10 @@ import path from 'node:path';
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
 export default async ({ commands, onError = "stop" }) => {
+  const capture = {};
   if (!Array.isArray(commands)) commands = [commands];
-  await processCommands(commands, onError, process.env);
+  await processCommands(commands, onError, process.env, process.cwd(), undefined, capture);
+  return Object.keys(capture).length ? capture : undefined;
 };
 
 /**
@@ -25,18 +27,21 @@ export default async ({ commands, onError = "stop" }) => {
  * @param {string} [wdir] - Working directory for each command group.
  * @returns {Promise<void>} Resolves when all sequential commands in the array complete.
  */
-async function processCommands(commands, onError, env = process.env, wdir = process.cwd()) {
+async function processCommands(commands, onError, env = process.env, wdir = process.cwd(), captureName, captureRoot) {
+  const capture = captureName ? { items: [] } : undefined;
+
   for (const cmd of commands) {
     try {
       if (typeof cmd === 'string') {
         // Execute a single command sequentially
-        await executeCommand(cmd, env, wdir);
+        await executeCommand(cmd, env, wdir, capture);
+
       } else if (cmd.steps) {
         // Execute steps (sequential) commands if explicitly specified
         if (cmd.useScript) {
-          await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir);
+          await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
         } else {
-          await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
+          await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
         }
       } else if (cmd.parallel) {
         // Parallel command execution with error handling
@@ -50,6 +55,10 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
       if (onError === "stop") break; // Stop execution if onError is "stop"
       if (onError === "log") continue; // Log and continue if onError is "log"
     }
+  }
+
+  if(capture){
+    captureRoot[captureName] = capture;
   }
 }
 
@@ -96,12 +105,36 @@ function handleFork(forkCommands, onError, env, wdir) {
  * @param {string} wdir - Working directory for the command.
  * @returns {Promise<void>} Resolves when the command completes.
  */
-async function executeCommand(command, env, wdir) {
+async function executeCommand(command, env, wdir, captureParent) {
   return new Promise((resolve, reject) => {
     const cwd = wdir ? path.resolve(wdir) : process.cwd();
-    const process = spawn(command, { shell: true, stdio: 'inherit', env, cwd });
+    const process = spawn(command, {
+      shell: true,
+      stdio: captureParent ? 'pipe' : 'inherit',
+      env,
+      cwd
+    });
+
+    let capture;
+
+    if (captureParent) {
+      capture = { stdout: '', stderr: '' };
+
+      process.stdout.on('data', (data) => {
+        capture.stdout += data.toString();
+      });
+
+      process.stderr.on('data', (data) => {
+        capture.stderr += data.toString();
+      });
+    }
 
     process.on('close', (code) => {
+      if (capture) {
+        capture.code = code;
+        captureParent.items.push(capture);
+      }
+
       if (code === 0) {
         resolve();
       } else {
@@ -124,7 +157,7 @@ async function executeCommand(command, env, wdir) {
  * @param {string} wdir - Working directory for the commands.
  * @returns {Promise<void>} Resolves when all commands complete.
  */
-async function executeStepsWithScript(steps, env, wdir) {
+async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot) {
   const { nanoid } = await import('nanoid');
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
   const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
@@ -141,7 +174,7 @@ async function executeStepsWithScript(steps, env, wdir) {
   if (!isWindows) {
     scriptContent += '#!/bin/sh\n\n';
   }
-  
+
   for (const step of steps) {
     if (typeof step === 'string') {
       // Simple shell command, append to the script content
@@ -187,12 +220,31 @@ async function executeStepsWithScript(steps, env, wdir) {
     await new Promise((resolve, reject) => {
       const process = spawn(interpreter, [scriptPath], {
         shell: true,
-        stdio: 'inherit',
+        stdio: captureName ? 'pipe' : 'inherit',
         env,
         cwd,
       });
 
+      let capture;
+
+      if (captureName) {
+        capture = { stdout: '', stderr: '' };
+
+        process.stdout.on('data', (data) => {
+          capture.stdout += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+          capture.stderr += data.toString();
+        });
+      }
+
       process.on('close', (code) => {
+        if (captureName) {
+          capture.code = code;
+          captureRoot[captureName] = capture;
+        }
+
         if (code === 0) {
           resolve();
         } else {
