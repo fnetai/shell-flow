@@ -5,6 +5,12 @@ from pathlib import Path
 import asyncio
 
 async def process_commands(commands, on_error, env, wdir, capture_name=None, capture_root=None):
+    """
+    Processes a sequence of commands, supporting sequential, parallel, and forked executions.
+    """
+    if capture_name and capture_root is None:
+        capture_root = {}  # Ensure capture_root is initialized
+
     capture = {"items": []} if capture_name else None
 
     for cmd in commands:
@@ -25,7 +31,7 @@ async def process_commands(commands, on_error, env, wdir, capture_name=None, cap
             elif "parallel" in cmd:
                 await handle_parallel(
                     cmd["parallel"], cmd.get("onError", on_error),
-                    cmd.get("env", env), cmd.get("wdir", wdir)
+                    cmd.get("env", env), cmd.get("wdir", wdir), capture_root
                 )
             elif "fork" in cmd:
                 await handle_fork(
@@ -42,10 +48,13 @@ async def process_commands(commands, on_error, env, wdir, capture_name=None, cap
     if capture_name:
         capture_root[capture_name] = capture
 
-async def handle_parallel(parallel_commands, on_error, env, wdir):
+async def handle_parallel(parallel_commands, on_error, env, wdir, capture_root=None):
+    """
+    Executes commands in parallel with optional error handling.
+    """
     async def task_wrapper(cmd):
         try:
-            await process_commands([cmd], on_error, env, wdir, None, None)
+            await process_commands([cmd], on_error, env, wdir, None, capture_root)
         except Exception as e:
             if on_error == "log":
                 print(f"Parallel error (continue): {e}")
@@ -59,6 +68,9 @@ async def handle_parallel(parallel_commands, on_error, env, wdir):
         await asyncio.gather(*tasks, return_exceptions=True)
 
 async def handle_fork(fork_commands, on_error, env, wdir):
+    """
+    Executes forked commands asynchronously, logging any errors.
+    """
     async def task_wrapper(cmd):
         try:
             await process_commands([cmd], on_error, env, wdir, None, None)
@@ -111,62 +123,76 @@ def execute_steps_with_script(steps, env, wdir, capture_name=None, capture_root=
             print(f"Failed to delete temp script: {tmp_file}. Error: {e}")
 
 def default(commands, on_error="stop"):
-    async def run(commands):
+    async def run(commands,on_error):
         capture = {}
         if not isinstance(commands, list):
             commands = [commands]
         await process_commands(commands, on_error, os.environ.copy(), os.getcwd(), None, capture)
         return capture if capture else None
 
-    return asyncio.run(run(commands))
+    return asyncio.run(run(commands,on_error))
 
-if __name__ == "__main__":
-    commands = [
-        "echo 'Starting the process!'",
-        {
-            "steps": [
-                "echo 'Step 1: Initialization'",
-                "echo 'Step 2: Processing Data'",
-                {
-                    "parallel": [
-                        "echo 'Parallel Task 1'",
-                        "invalid-parallel-command",
-                        "echo 'Parallel Task 3'"
-                    ],
-                    "onError": "log"
-                },
-                "echo 'Step 3: Finalizing'"
-            ],
-            "onError": "continue"
-        },
-        {
-            "fork": [
-                "echo 'Forked Task A'",
-                "echo 'Forked Task B'",
-                "invalid-fork-command"
-            ],
-            "onError": "log"
-        },
-        {
-            "steps": [
-                "echo 'Step with capture 1'",
-                {
-                    "steps": [
-                        "echo 'Nested Step 1'",
-                        "echo 'Nested Step 2'"
-                    ],
-                    "captureName": "nested_capture",
-                    "onError": "continue"
-                },
-                "echo 'Step with capture 2'"
-            ],
-            "captureName": "example_capture",
-            "onError": "continue"
-        }
-    ]
+# if __name__ == "__main__":
+#     commands = [
+#         "echo 'Starting Test Pipeline!'",
+#         {
+#             "steps": [
+#                 "echo 'Step 1: Initialize'",
+#                 {
+#                     "parallel": [
+#                         {
+#                             "steps": [
+#                                 "echo 'Parallel Block 1 - Task 1'",
+#                                 "echo 'Parallel Block 1 - Task 2'",
+#                                 "invalid-parallel-block-1-task"
+#                             ],
+#                             "onError": "continue",
+#                             "captureName": "parallel_block_1_capture"
+#                         },
+#                         {
+#                             "steps": [
+#                                 "echo 'Parallel Block 2 - Task 1'",
+#                                 "echo 'Parallel Block 2 - Task 2'"
+#                             ],
+#                             "captureName": "parallel_block_2_capture",
+#                             "onError": "log"
+#                         }
+#                     ],
+#                     "onError": "log"
+#                 },
+#                 "echo 'Step 2: Intermediate Cleanup'",
+#                 {
+#                     "fork": [
+#                         "echo 'Fork Task 1'",
+#                         "invalid-fork-task",
+#                         "echo 'Fork Task 3'"
+#                     ],
+#                     "onError": "continue"
+#                 },
+#                 "echo 'Step 3: Processing'",
+#                 {
+#                     "steps": [
+#                         {
+#                             "steps": [
+#                                 "echo 'Nested Capture Step A'",
+#                                 "invalid-nested-step-command",
+#                                 "echo 'Nested Capture Step B'"
+#                             ],
+#                             "captureName": "nested_capture",
+#                             "onError": "log"
+#                         },
+#                         "echo 'Final Task in Processing'"
+#                     ],
+#                     "captureName": "processing_capture"
+#                 },
+#                 "echo 'Pipeline Completed!'"
+#             ],
+#             "onError": "continue"
+#         }
+#     ]
 
-    try:
-        results = default(commands, on_error="log")
-        print("Execution Results:", results)
-    except Exception as e:
-        print("Error during execution:", str(e))
+#     try:
+#         results = default(commands, on_error="log")
+#         print("Execution Results:", results)
+#     except Exception as e:
+#         print("Error during execution:", str(e))

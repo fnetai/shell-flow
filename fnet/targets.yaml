@@ -5,10 +5,10 @@ npm-default:
   params:
     bin: fnet-shell-flow
     name: "@fnet/shell-flow"
-    
+
 pyip-default:
   type: pyip
   t::py::enabled: true
-  version: "0.1.12"
+  version: "0.1.13"
   params:
     name: fnet_shell_flow
