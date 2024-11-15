@@ -1,7 +1,14 @@
 npm-default:
   type: npm
-  enabled: true
+  t::nd::enabled: true
   version: "0.1.12"
   params:
     bin: fnet-shell-flow
     name: "@fnet/shell-flow"
+    
+pyip-default:
+  type: pyip
+  t::py::enabled: true
+  version: "0.1.12"
+  params:
+    name: fnet_shell_flow

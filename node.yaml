@@ -1,11 +1,13 @@
 name: shell-flow
 
 ai::name: "@fnet/shell-flow"
-s::repo.url: https://gitlab.com/fnetai/shell-flow.git
+t::py::ai::name: "fnet_shell_flow"
 
+s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 input: g::file://fnet/input.yaml
 
 features:
   app: false
   iife: false
   t::dev::s::cli.fargs.default: dev
+  t::py::s::runtime.type: python
