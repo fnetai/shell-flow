@@ -9,6 +9,6 @@ npm-default:
 pyip-default:
   type: pyip
   t::py::enabled: true
-  version: "0.1.13"
+  version: "0.1.14"
   params:
     name: fnet_shell_flow

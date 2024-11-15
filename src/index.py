@@ -4,14 +4,14 @@ import tempfile
 from pathlib import Path
 import asyncio
 
-async def process_commands(commands, on_error, env, wdir, capture_name=None, capture_root=None):
+async def process_commands(commands, onError, env, wdir, captureName=None, captureRoot=None):
     """
     Processes a sequence of commands, supporting sequential, parallel, and forked executions.
     """
-    if capture_name and capture_root is None:
-        capture_root = {}  # Ensure capture_root is initialized
+    if captureName and captureRoot is None:
+        captureRoot = {}  # Ensure captureRoot is initialized
 
-    capture = {"items": []} if capture_name else None
+    capture = {"items": []} if captureName else None
 
     for cmd in commands:
         try:
@@ -21,88 +21,88 @@ async def process_commands(commands, on_error, env, wdir, capture_name=None, cap
                 if cmd.get("useScript", False):
                     execute_steps_with_script(
                         cmd["steps"], cmd.get("env", env), cmd.get("wdir", wdir),
-                        cmd.get("captureName"), capture_root
+                        cmd.get("captureName"), captureRoot
                     )
                 else:
                     await process_commands(
-                        cmd["steps"], cmd.get("onError", on_error), cmd.get("env", env),
-                        cmd.get("wdir", wdir), cmd.get("captureName"), capture_root
+                        cmd["steps"], cmd.get("onError", onError), cmd.get("env", env),
+                        cmd.get("wdir", wdir), cmd.get("captureName"), captureRoot
                     )
             elif "parallel" in cmd:
                 await handle_parallel(
-                    cmd["parallel"], cmd.get("onError", on_error),
-                    cmd.get("env", env), cmd.get("wdir", wdir), capture_root
+                    cmd["parallel"], cmd.get("onError", onError),
+                    cmd.get("env", env), cmd.get("wdir", wdir), captureRoot
                 )
             elif "fork" in cmd:
                 await handle_fork(
-                    cmd["fork"], cmd.get("onError", on_error),
+                    cmd["fork"], cmd.get("onError", onError),
                     cmd.get("env", env), cmd.get("wdir", wdir)
                 )
         except Exception as error:
             print(f"Error occurred: {error}")
-            if on_error == "stop":
+            if onError == "stop":
                 break
-            elif on_error == "log":
+            elif onError == "log":
                 continue
 
-    if capture_name:
-        capture_root[capture_name] = capture
+    if captureName:
+        captureRoot[captureName] = capture
 
-async def handle_parallel(parallel_commands, on_error, env, wdir, capture_root=None):
+async def handle_parallel(parallel_commands, onError, env, wdir, captureRoot=None):
     """
     Executes commands in parallel with optional error handling.
     """
     async def task_wrapper(cmd):
         try:
-            await process_commands([cmd], on_error, env, wdir, None, capture_root)
+            await process_commands([cmd], onError, env, wdir, None, captureRoot)
         except Exception as e:
-            if on_error == "log":
+            if onError == "log":
                 print(f"Parallel error (continue): {e}")
-            elif on_error == "stop":
+            elif onError == "stop":
                 raise e
 
     tasks = [task_wrapper(cmd) for cmd in parallel_commands]
-    if on_error == "stop":
+    if onError == "stop":
         await asyncio.gather(*tasks)
     else:
         await asyncio.gather(*tasks, return_exceptions=True)
 
-async def handle_fork(fork_commands, on_error, env, wdir):
+async def handle_fork(fork_commands, onError, env, wdir):
     """
     Executes forked commands asynchronously, logging any errors.
     """
     async def task_wrapper(cmd):
         try:
-            await process_commands([cmd], on_error, env, wdir, None, None)
+            await process_commands([cmd], onError, env, wdir, None, None)
         except Exception as e:
-            if on_error == "log":
+            if onError == "log":
                 print(f"Fork error (log): {e}")
-            elif on_error == "stop":
+            elif onError == "stop":
                 raise e
 
     tasks = [task_wrapper(cmd) for cmd in fork_commands]
     await asyncio.gather(*tasks, return_exceptions=True)
 
-def execute_command(command, env, wdir, capture_parent=None):
+def execute_command(command, env, wdir, captureParent=None):
     process = subprocess.Popen(
         command, shell=True, cwd=wdir, env=env,
-        stdout=subprocess.PIPE if capture_parent else None,
-        stderr=subprocess.PIPE if capture_parent else None
+        stdout=subprocess.PIPE if captureParent else None,
+        stderr=subprocess.PIPE if captureParent else None
     )
     stdout, stderr = process.communicate()
 
-    if capture_parent:
+    if captureParent:
         capture = {
             "stdout": stdout.decode("utf-8"),
             "stderr": stderr.decode("utf-8"),
             "code": process.returncode
         }
-        capture_parent["items"].append(capture)
+        captureParent["items"].append(capture)
 
     if process.returncode != 0:
         raise RuntimeError(f"Command failed: {command}")
 
-def execute_steps_with_script(steps, env, wdir, capture_name=None, capture_root=None):
+def execute_steps_with_script(steps, env, wdir, captureName=None, captureRoot=None):
     tmp_file = Path(tempfile.mktemp(suffix=".sh"))
     script_content = "\n".join(steps)
 
@@ -114,7 +114,7 @@ def execute_steps_with_script(steps, env, wdir, capture_name=None, capture_root=
 
         execute_command(
             str(tmp_file), env, wdir,
-            capture_root.get(capture_name) if capture_name and capture_root else None
+            captureRoot.get(captureName) if captureName and captureRoot else None
         )
     finally:
         try:
@@ -122,15 +122,18 @@ def execute_steps_with_script(steps, env, wdir, capture_name=None, capture_root=
         except Exception as e:
             print(f"Failed to delete temp script: {tmp_file}. Error: {e}")
 
-def default(commands, on_error="stop"):
-    async def run(commands,on_error):
+def default(commands, onError="stop"):
+    """
+    Main entry point for processing shell commands.
+    """
+    async def run(commands, onError):
         capture = {}
         if not isinstance(commands, list):
             commands = [commands]
-        await process_commands(commands, on_error, os.environ.copy(), os.getcwd(), None, capture)
+        await process_commands(commands, onError, os.environ.copy(), os.getcwd(), None, capture)
         return capture if capture else None
 
-    return asyncio.run(run(commands,on_error))
+    return asyncio.run(run(commands, onError))
 
 # if __name__ == "__main__":
 #     commands = [
@@ -192,7 +195,7 @@ def default(commands, on_error="stop"):
 #     ]
 
 #     try:
-#         results = default(commands, on_error="log")
+#         results = default(commands, onError="log")
 #         print("Execution Results:", results)
 #     except Exception as e:
 #         print("Error during execution:", str(e))
