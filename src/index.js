@@ -14,7 +14,9 @@ import path from 'node:path';
 export default async ({ commands, onError = "stop" }) => {
   const capture = {};
   if (!Array.isArray(commands)) commands = [commands];
+
   await processCommands(commands, onError, process.env, process.cwd(), undefined, capture);
+
   return Object.keys(capture).length ? capture : undefined;
 };
 
@@ -45,19 +47,21 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
         }
       } else if (cmd.parallel) {
         // Parallel command execution with error handling
-        await handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
+        await handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
       } else if (cmd.fork) {
         // Forked command execution with error handling
-        handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir);
+        handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
       }
     } catch (error) {
       console.error(`Error occurred: ${error.message}`);
+      captureRoot.errors = captureRoot.errors || [];
+      captureRoot.errors.push({ message: error.message, command: error.command, code: error.code, onError });
       if (onError === "stop") break; // Stop execution if onError is "stop"
       if (onError === "log") continue; // Log and continue if onError is "log"
     }
   }
-
-  if(capture){
+  
+  if (capture) {
     captureRoot[captureName] = capture;
   }
 }
@@ -70,8 +74,8 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
  * @param {Object} env - Environment variables for the parallel commands.
  * @param {string} wdir - Working directory for the parallel commands.
  */
-async function handleParallel(parallelCommands, onError, env, wdir) {
-  const tasks = parallelCommands.map((cmd) => processCommands([cmd], onError, env, wdir));
+async function handleParallel(parallelCommands, onError, env, wdir, captureRoot) {
+  const tasks = parallelCommands.map((cmd) => processCommands([cmd], onError, env, wdir, undefined, captureRoot));
   if (onError === 'stop') {
     await Promise.all(tasks); // Waits for all to complete, throws if any error
   } else {
@@ -87,10 +91,10 @@ async function handleParallel(parallelCommands, onError, env, wdir) {
  * @param {Object} env - Environment variables for the forked commands.
  * @param {string} wdir - Working directory for the forked commands.
  */
-function handleFork(forkCommands, onError, env, wdir) {
+function handleFork(forkCommands, onError, env, wdir, captureRoot) {
   forkCommands.forEach(async (cmd) => {
     try {
-      await processCommands([cmd], onError, env, wdir);
+      await processCommands([cmd], onError, env, wdir, undefined, captureRoot);
     } catch (error) {
       console.error(`Fork error (log): ${error.message}`);
     }
@@ -138,12 +142,12 @@ async function executeCommand(command, env, wdir, captureParent) {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Command failed: ${command}`));
+        reject(new ShellError('Process finished with error.', command, code));
       }
     });
 
     process.on('error', (error) => {
-      reject(new Error(`Process error: ${error.message}`));
+      reject(new ShellError(error.message, command));
     });
   });
 }
@@ -248,12 +252,12 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`Script execution failed with code: ${code}`));
+          reject(new ShellError('Script process finished with error.', scriptPath, code));
         }
       });
 
       process.on('error', (error) => {
-        reject(new Error(`Script process error: ${error.message}`));
+        reject(new ShellError(error.message, scriptPath));
       });
     });
   } finally {
@@ -261,5 +265,26 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
     await unlink(scriptPath).catch((err) =>
       console.error(`Failed to delete temp script: ${scriptPath}`, err)
     );
+  }
+}
+
+class ShellError extends Error {
+  #code;
+  #command;
+  #name;
+  constructor(message, command, code = 1) {
+    super(message);
+    this.#code = code;
+    this.#command = command;
+    this.#name = this.constructor.name;
+  }
+  get code() {
+    return this.#code;
+  }
+  get command() {
+    return this.#command;
+  }
+  get name() {
+    return this.#name;
   }
 }
