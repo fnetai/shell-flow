@@ -54,13 +54,18 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
       }
     } catch (error) {
       console.error(`Error occurred: ${error.message}`);
+
       captureRoot.errors = captureRoot.errors || [];
       captureRoot.errors.push({ message: error.message, command: error.command, code: error.code, onError });
+      
+      // TODO: Add a custom formatter and more options for errors
+      captureRoot.formatErrors = captureRoot.formatErrors || (() => { JSON.stringify(captureRoot.errors, null, 2) });
+
       if (onError === "stop") break; // Stop execution if onError is "stop"
       if (onError === "log") continue; // Log and continue if onError is "log"
     }
   }
-  
+
   if (capture) {
     captureRoot[captureName] = capture;
   }
