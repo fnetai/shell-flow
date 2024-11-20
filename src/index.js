@@ -57,9 +57,9 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
 
       captureRoot.errors = captureRoot.errors || [];
       captureRoot.errors.push({ message: error.message, command: error.command, code: error.code, onError });
-      
+
       // TODO: Add a custom formatter and more options for errors
-      captureRoot.errors.format = captureRoot.errors.format || (() => { JSON.stringify(captureRoot.errors, null, 2) });
+      captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
 
       if (onError === "stop") break; // Stop execution if onError is "stop"
       if (onError === "log") continue; // Log and continue if onError is "log"
