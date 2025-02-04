@@ -11,11 +11,12 @@ import path from 'node:path';
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, onError = "stop" }) => {
+export default async ({ commands, env = process.env, wdir = process.cwd(), onError = "stop" }) => {
   const capture = {};
+
   if (!Array.isArray(commands)) commands = [commands];
 
-  await processCommands(commands, onError, process.env, process.cwd(), undefined, capture);
+  await processCommands(commands, onError, env, wdir, undefined, capture);
 
   return Object.keys(capture).length ? capture : undefined;
 };
