@@ -25,7 +25,7 @@ properties:
   onError:
     type: string
     default: "stop"
-    enum: ["stop", "continue", "log"]
+    enum: ["stop", "continue", "log", "throw"]
     description: |
       Global error handling policy: "stop", "continue", or "log".
   env:

@@ -73,7 +73,8 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
       captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
 
       if (onError === "stop") break; // Stop execution if onError is "stop"
-      if (onError === "log") continue; // Log and continue if onError is "log"
+      else if (onError === "log") continue; // Log and continue if onError is "log"
+      else if (onError === 'throw') throw error;
     }
   }
 
