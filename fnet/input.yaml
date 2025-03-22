@@ -8,15 +8,50 @@ properties:
       oneOf:
         - type: string
         - $ref: "#/$defs/commandGroup"
+  fork:
+    description: Forked command string or array of commands or command groups to execute.
+    type: array
+    items:
+      oneOf:
+        - type: string
+        - $ref: "#/$defs/commandGroup"
+  parallel:
+    description: Parallel command string or array of commands or command groups to execute.
+    type: array
+    items:
+      oneOf:
+        - type: string
+        - $ref: "#/$defs/commandGroup"
   onError:
     type: string
     default: "stop"
     enum: ["stop", "continue", "log"]
     description: |
       Global error handling policy: "stop", "continue", or "log".
-required:
-  - commands
-
+  env:
+    type: object
+    additionalProperties: true
+    description: Environment variables.
+  wdir:
+    type: string
+    description: Working directory.
+# Enforce that exactly one of commands, fork, or parallel is provided.
+oneOf:
+  - required: ["commands"]
+    not:
+      anyOf:
+        - required: ["fork"]
+        - required: ["parallel"]
+  - required: ["fork"]
+    not:
+      anyOf:
+        - required: ["commands"]
+        - required: ["parallel"]
+  - required: ["parallel"]
+    not:
+      anyOf:
+        - required: ["commands"]
+        - required: ["fork"]
 $defs:
   commandGroup:
     type: object
@@ -63,7 +98,7 @@ $defs:
       captureName:
         type: string
         description: |
-          If set, the output of the command group is captured and stored in a file with this name.
+          If set, the output of the command group is captured and stored with this name.
           Ignored for parallel and fork.
     oneOf:
       - required: ["steps"]

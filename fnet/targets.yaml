@@ -1,7 +1,7 @@
 npm-default:
   type: npm
   t::nd::enabled: true
-  version: "0.1.16"
+  version: "0.1.19"
   params:
     bin: fnet-shell-flow
     name: "@fnet/shell-flow"

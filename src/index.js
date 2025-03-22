@@ -7,16 +7,24 @@ import path from 'node:path';
  * Executes a sequence of shell commands with a flexible error handling policy.
  *
  * @param {Object} args - The arguments object.
- * @param {Array} args.commands - Command string or array of commands or command groups to execute.
+ * @param {Array|string|Object} args.commands - Command string or array of commands or command groups to execute.
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, env = process.env, wdir = process.cwd(), onError = "stop" }) => {
+export default async ({ commands, fork, parallel, env = process.env, wdir = process.cwd(), onError = "stop" }) => {
   const capture = {};
 
-  if (!Array.isArray(commands)) commands = [commands];
-
-  await processCommands(commands, onError, env, wdir, undefined, capture);
+  if (commands) {
+    let temp = commands;
+    if (!Array.isArray(commands)) temp = [commands];
+    await processCommands(temp, onError, env, wdir, undefined, capture);
+  }
+  else if (parallel) {
+    await handleParallel(parallel, onError, env, wdir, capture);
+  }
+  else if (fork) {
+    handleFork(fork, onError, env, wdir, capture);
+  }
 
   return Object.keys(capture).length ? capture : undefined;
 };
@@ -56,8 +64,10 @@ async function processCommands(commands, onError, env = process.env, wdir = proc
     } catch (error) {
       console.error(`Error occurred: ${error.message}`);
 
+      const lastError = { message: error.message, command: error.command, code: error.code, onError };
+      captureRoot.error = lastError;
       captureRoot.errors = captureRoot.errors || [];
-      captureRoot.errors.push({ message: error.message, command: error.command, code: error.code, onError });
+      captureRoot.errors.push(lastError);
 
       // TODO: Add a custom formatter and more options for errors
       captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
