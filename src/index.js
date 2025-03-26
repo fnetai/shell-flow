@@ -11,7 +11,7 @@ import path from 'node:path';
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, fork, parallel, env = process.env, wdir = process.cwd(), onError = "stop" }) => {
+export default async ({ commands, fork, parallel, env, wdir = process.cwd(), onError = "stop" }) => {
   const capture = {};
 
   if (commands) {
@@ -38,7 +38,7 @@ export default async ({ commands, fork, parallel, env = process.env, wdir = proc
  * @param {string} [wdir] - Working directory for each command group.
  * @returns {Promise<void>} Resolves when all sequential commands in the array complete.
  */
-async function processCommands(commands, onError, env = process.env, wdir = process.cwd(), captureName, captureRoot) {
+async function processCommands(commands, onError, env, wdir = process.cwd(), captureName, captureRoot) {
   const capture = captureName ? { items: [] } : undefined;
 
   for (const cmd of commands) {
@@ -132,7 +132,7 @@ async function executeCommand(command, env, wdir, captureParent) {
     const process = spawn(command, {
       shell: true,
       stdio: captureParent ? 'pipe' : 'inherit',
-      env,
+      env: env ? { ...process.env, ...env } : process.env,
       cwd
     });
 
@@ -242,7 +242,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
       const process = spawn(interpreter, [scriptPath], {
         shell: true,
         stdio: captureName ? 'pipe' : 'inherit',
-        env,
+        env: env ? { ...process.env, ...env } : process.env,
         cwd,
       });
 
