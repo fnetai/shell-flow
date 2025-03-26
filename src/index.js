@@ -129,7 +129,7 @@ function handleFork(forkCommands, onError, env, wdir, captureRoot) {
 async function executeCommand(command, env, wdir, captureParent) {
   return new Promise((resolve, reject) => {
     const cwd = wdir ? path.resolve(wdir) : process.cwd();
-    const process = spawn(command, {
+    const pcs = spawn(command, {
       shell: true,
       stdio: captureParent ? 'pipe' : 'inherit',
       env: env ? { ...process.env, ...env } : process.env,
@@ -141,16 +141,16 @@ async function executeCommand(command, env, wdir, captureParent) {
     if (captureParent) {
       capture = { stdout: '', stderr: '' };
 
-      process.stdout.on('data', (data) => {
+      pcs.stdout.on('data', (data) => {
         capture.stdout += data.toString();
       });
 
-      process.stderr.on('data', (data) => {
+      pcs.stderr.on('data', (data) => {
         capture.stderr += data.toString();
       });
     }
 
-    process.on('close', (code) => {
+    pcs.on('close', (code) => {
       if (capture) {
         capture.code = code;
         captureParent.items.push(capture);
@@ -163,7 +163,7 @@ async function executeCommand(command, env, wdir, captureParent) {
       }
     });
 
-    process.on('error', (error) => {
+    pcs.on('error', (error) => {
       reject(new ShellError(error.message, command));
     });
   });
@@ -239,7 +239,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
 
     // Execute the script
     await new Promise((resolve, reject) => {
-      const process = spawn(interpreter, [scriptPath], {
+      const pcs = spawn(interpreter, [scriptPath], {
         shell: true,
         stdio: captureName ? 'pipe' : 'inherit',
         env: env ? { ...process.env, ...env } : process.env,
@@ -251,16 +251,16 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
       if (captureName) {
         capture = { stdout: '', stderr: '' };
 
-        process.stdout.on('data', (data) => {
+        pcs.stdout.on('data', (data) => {
           capture.stdout += data.toString();
         });
 
-        process.stderr.on('data', (data) => {
+        pcs.stderr.on('data', (data) => {
           capture.stderr += data.toString();
         });
       }
 
-      process.on('close', (code) => {
+      pcs.on('close', (code) => {
         if (captureName) {
           capture.code = code;
           captureRoot[captureName] = capture;
@@ -273,7 +273,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
         }
       });
 
-      process.on('error', (error) => {
+      pcs.on('error', (error) => {
         reject(new ShellError(error.message, scriptPath));
       });
     });
