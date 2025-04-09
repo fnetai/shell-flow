@@ -5,3 +5,4 @@
 .package
 .npmrc
 .vscode
+__pycache__

@@ -1,32 +1,74 @@
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
 import asyncio
-import shutil
-from typing import Dict, List, Union, Optional
+import json
+import os
+import signal
+import tempfile
+from typing import Dict, List, Optional, Union
+
+class ProcessManager:
+    def __init__(self):
+        self._processes = set()
+        self._cleanup_handlers = []
+        
+        async def cleanup():
+            for proc in self._processes:
+                try:
+                    proc.terminate()  # Use terminate() instead of kill() for graceful shutdown
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        proc.kill()  # Force kill if terminate doesn't work
+                except Exception as err:
+                    print(f"Failed to kill process: {err}")
+
+        # Add signal handlers
+        loop = asyncio.get_event_loop()
+        for sig in ('SIGINT', 'SIGTERM'):
+            try:
+                loop.add_signal_handler(
+                    getattr(signal, sig),
+                    lambda: asyncio.create_task(cleanup())
+                )
+                self._cleanup_handlers.append((sig, cleanup))
+            except NotImplementedError:
+                # Windows doesn't support all signals
+                pass
+
+    def track(self, process):
+        """Track an asyncio subprocess"""
+        self._processes.add(process)
+        
+        async def remove_process():
+            self._processes.remove(process)
+            if not self._processes:
+                self.dispose()
+        
+        # Create task to handle process completion
+        asyncio.create_task(self._wait_and_remove(process, remove_process))
+
+    async def _wait_and_remove(self, process, callback):
+        """Wait for process to complete and call callback"""
+        await process.wait()
+        await callback()
+
+    def dispose(self):
+        """Remove all signal handlers"""
+        loop = asyncio.get_event_loop()
+        for sig, _ in self._cleanup_handlers:
+            try:
+                loop.remove_signal_handler(getattr(signal, sig))
+            except NotImplementedError:
+                pass
+        self._cleanup_handlers.clear()
 
 class ShellError(Exception):
-    def __init__(self, message: str, command: str, code: int = 1):
+    def __init__(self, message: str, command: Optional[str] = None, code: Optional[int] = None):
         super().__init__(message)
-        self._code = code
-        self._command = command
-        self._name = self.__class__.__name__
+        self.command = command
+        self.code = code
 
-    @property
-    def code(self) -> int:
-        return self._code
-
-    @property
-    def command(self) -> str:
-        return self._command
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-async def execute_command(command: str, env: Dict, wdir: str, capture_parent: Optional[Dict] = None) -> None:
+async def execute_command(command: str, env: Dict, wdir: str, capture_parent: Optional[Dict] = None, process_manager: Optional[ProcessManager] = None) -> None:
     """
     Executes a single shell command and handles output streaming.
     """
@@ -41,21 +83,21 @@ async def execute_command(command: str, env: Dict, wdir: str, capture_parent: Op
         cwd=cwd
     )
 
+    if process_manager:
+        process_manager.track(process)
+
     if capture_parent:
         stdout, stderr = await process.communicate()
-        capture = {
-            "stdout": stdout.decode() if stdout else "",
-            "stderr": stderr.decode() if stderr else "",
-            "code": process.returncode
-        }
-        capture_parent["items"].append(capture)
-
+        capture_parent["stdout"] = stdout.decode() if stdout else ""
+        capture_parent["stderr"] = stderr.decode() if stderr else ""
+        capture_parent["code"] = process.returncode
+        
         if process.returncode != 0:
             raise ShellError("Process finished with error.", command, process.returncode)
     else:
-        await process.wait()
-        if process.returncode != 0:
-            raise ShellError("Process finished with error.", command, process.returncode)
+        returncode = await process.wait()
+        if returncode != 0:
+            raise ShellError("Process finished with error.", command, returncode)
 
 async def execute_steps_with_script(steps: List, env: Dict, wdir: str, capture_name: Optional[str] = None, capture_root: Optional[Dict] = None) -> None:
     """
@@ -238,67 +280,70 @@ def default(commands: Union[List, str], on_error: str = "stop", env: Optional[Di
     """
     return asyncio.run(_run(commands, on_error, env, wdir))
 
-# if __name__ == "__main__":
-#     commands = [
-#         "echo 'Starting Test Pipeline!'",
-#         {
-#             "steps": [
-#                 "echo 'Step 1: Initialize'",
-#                 {
-#                     "parallel": [
-#                         {
-#                             "steps": [
-#                                 "echo 'Parallel Block 1 - Task 1'",
-#                                 "echo 'Parallel Block 1 - Task 2'",
-#                                 "invalid-parallel-block-1-task"
-#                             ],
-#                             "onError": "continue",
-#                             "captureName": "parallel_block_1_capture"
-#                         },
-#                         {
-#                             "steps": [
-#                                 "echo 'Parallel Block 2 - Task 1'",
-#                                 "echo 'Parallel Block 2 - Task 2'"
-#                             ],
-#                             "captureName": "parallel_block_2_capture",
-#                             "onError": "log"
-#                         }
-#                     ],
-#                     "onError": "log"
-#                 },
-#                 "echo 'Step 2: Intermediate Cleanup'",
-#                 {
-#                     "fork": [
-#                         "echo 'Fork Task 1'",
-#                         "invalid-fork-task",
-#                         "echo 'Fork Task 3'"
-#                     ],
-#                     "onError": "continue"
-#                 },
-#                 "echo 'Step 3: Processing'",
-#                 {
-#                     "steps": [
-#                         {
-#                             "steps": [
-#                                 "echo 'Nested Capture Step A'",
-#                                 "invalid-nested-step-command",
-#                                 "echo 'Nested Capture Step B'"
-#                             ],
-#                             "captureName": "nested_capture",
-#                             "onError": "log"
-#                         },
-#                         "echo 'Final Task in Processing'"
-#                     ],
-#                     "captureName": "processing_capture"
-#                 },
-#                 "echo 'Pipeline Completed!'"
-#             ],
-#             "onError": "continue"
-#         }
-#     ]
+if __name__ == "__main__":
+    commands = [
+        "echo 'Starting Test Pipeline!'",
+        {
+            "steps": [
+                "echo 'Step 1: Initialize'",
+                {
+                    "parallel": [
+                        {
+                            "steps": [
+                                "echo 'Parallel Block 1 - Task 1'",
+                                "echo 'Parallel Block 1 - Task 2'",
+                                "invalid-parallel-block-1-task"
+                            ],
+                            "onError": "continue",
+                            "captureName": "parallel_block_1_capture"
+                        },
+                        {
+                            "steps": [
+                                "echo 'Parallel Block 2 - Task 1'",
+                                "echo 'Parallel Block 2 - Task 2'"
+                            ],
+                            "captureName": "parallel_block_2_capture",
+                            "onError": "log"
+                        }
+                    ],
+                    "onError": "log"
+                },
+                "echo 'Step 2: Intermediate Cleanup'",
+                {
+                    "fork": [
+                        "echo 'Fork Task 1'",
+                        "invalid-fork-task",
+                        "echo 'Fork Task 3'"
+                    ],
+                    "onError": "continue"
+                },
+                "echo 'Step 3: Processing'",
+                {
+                    "steps": [
+                        {
+                            "steps": [
+                                "echo 'Nested Capture Step A'",
+                                "invalid-nested-step-command",
+                                "echo 'Nested Capture Step B'"
+                            ],
+                            "captureName": "nested_capture",
+                            "onError": "log"
+                        },
+                        "echo 'Final Task in Processing'"
+                    ],
+                    "captureName": "processing_capture"
+                },
+                "echo 'Pipeline Completed!'"
+            ],
+            "onError": "continue"
+        }
+    ]
 
-#     try:
-#         results = default(commands, onError="log")
-#         print("Execution Results:", results)
-#     except Exception as e:
-#         print("Error during execution:", str(e))
+    process_manager = ProcessManager()
+    try:
+        results = default(commands=commands, on_error="log")
+        print("Execution Results:", results)
+    except Exception as e:
+        print("Error during execution:", str(e))
+    finally:
+        process_manager.dispose()
