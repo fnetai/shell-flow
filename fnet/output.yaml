@@ -1,0 +1,126 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+type: object
+additionalProperties: false
+properties:
+  error:
+    description: Details of the last error that occurred during execution.
+    type: object
+    properties:
+      message:
+        type: string
+        description: Error message describing what went wrong.
+      command:
+        type: string
+        description: The command that caused the error.
+      code:
+        type: integer
+        description: Process exit code of the failed command.
+      onError:
+        type: string
+        enum: ["stop", "continue", "log", "throw"]
+        description: Error handling policy that was active when the error occurred.
+    required: ["message"]
+
+  errors:
+    description: Array of all errors that occurred during execution.
+    type: array
+    items:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message describing what went wrong.
+        command:
+          type: string
+          description: The command that caused the error.
+        code:
+          type: integer
+          description: Process exit code of the failed command.
+        onError:
+          type: string
+          enum: ["stop", "continue", "log", "throw"]
+          description: Error handling policy that was active when the error occurred.
+      required: ["message"]
+
+  # Dynamic capture properties based on captureName
+  # Each captured output is stored under its captureName
+  additionalProperties:
+    oneOf:
+      - type: object
+        description: Captured output for a single command.
+        properties:
+          stdout:
+            type: string
+            description: Standard output from the command.
+          stderr:
+            type: string
+            description: Standard error output from the command.
+          code:
+            type: integer
+            description: Process exit code.
+        required: ["stdout", "stderr", "code"]
+      
+      - type: object
+        description: Captured output for a group of commands.
+        properties:
+          items:
+            type: array
+            description: Array of captured outputs from each command in the group.
+            items:
+              type: object
+              properties:
+                stdout:
+                  type: string
+                  description: Standard output from the command.
+                stderr:
+                  type: string
+                  description: Standard error output from the command.
+                code:
+                  type: integer
+                  description: Process exit code.
+              required: ["stdout", "stderr", "code"]
+        required: ["items"]
+
+examples:
+  - description: Simple command capture
+    value:
+      my_capture:
+        stdout: "Hello World\n"
+        stderr: ""
+        code: 0
+
+  - description: Command group capture with error
+    value:
+      group_capture:
+        items:
+          - stdout: "Step 1\n"
+            stderr: ""
+            code: 0
+          - stdout: ""
+            stderr: "Command not found\n"
+            code: 127
+      error:
+        message: "Process finished with error."
+        command: "invalid-command"
+        code: 127
+        onError: "stop"
+      errors:
+        - message: "Process finished with error."
+          command: "invalid-command"
+          code: 127
+          onError: "stop"
+
+  - description: Multiple named captures
+    value:
+      first_capture:
+        stdout: "First output\n"
+        stderr: ""
+        code: 0
+      second_capture:
+        items:
+          - stdout: "Second group - step 1\n"
+            stderr: ""
+            code: 0
+          - stdout: "Second group - step 2\n"
+            stderr: ""
+            code: 0

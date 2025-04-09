@@ -104,3 +104,97 @@ $defs:
       - required: ["steps"]
       - required: ["parallel"]
       - required: ["fork"]
+examples:
+  - description: Sequential command execution with error handling
+    value:
+      commands:
+        - "echo 'Starting deployment'"
+        - steps:
+            - "npm install"
+            - "npm run build"
+            - "npm run test"
+          onError: "stop"
+          captureName: "build_output"
+      onError: "stop"
+      env:
+        NODE_ENV: "production"
+      wdir: "./app"
+
+  - description: Parallel execution of multiple tasks
+    value:
+      parallel:
+        - "npm run test:unit"
+        - "npm run test:integration"
+        - steps:
+            - "npm run lint"
+            - "npm run type-check"
+          captureName: "code_quality"
+      onError: "continue"
+      env:
+        CI: "true"
+
+  - description: Background tasks with fork
+    value:
+      fork:
+        - "npm run watch:css"
+        - "npm run watch:js"
+        - steps:
+            - "echo 'Starting dev server'"
+            - "npm run dev"
+          env:
+            PORT: "3000"
+      onError: "log"
+
+  - description: Complex nested structure
+    value:
+      commands:
+        - "echo 'Starting pipeline'"
+        - parallel:
+            - steps:
+                - "npm install"
+                - "npm run build"
+              captureName: "build_output"
+              useScript: true
+            - fork:
+                - "npm run watch"
+                - "npm run test:watch"
+        - steps:
+            - "docker build -t myapp ."
+            - "docker push myapp"
+          onError: "throw"
+          env:
+            DOCKER_BUILDKIT: "1"
+      wdir: "/project/root"
+      env:
+        NODE_ENV: "development"
+
+  - description: Script-based execution with capture
+    value:
+      commands:
+        - steps:
+            - "set -e"
+            - "echo 'Preparing environment'"
+            - "npm ci"
+            - "npm run build"
+          useScript: true
+          captureName: "build_log"
+          env:
+            NODE_ENV: "production"
+      onError: "stop"
+
+  - description: Error handling demonstration
+    value:
+      parallel:
+        - steps:
+            - "echo 'Task 1'"
+            - "invalid-command-1"
+          onError: "continue"
+        - steps:
+            - "echo 'Task 2'"
+            - "invalid-command-2"
+          onError: "log"
+        - steps:
+            - "echo 'Task 3'"
+            - "exit 1"
+          onError: "throw"
+      onError: "stop"
