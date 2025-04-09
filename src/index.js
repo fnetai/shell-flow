@@ -3,6 +3,43 @@ import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+class ProcessManager {
+  #processes = new Set();
+  #cleanup;
+
+  constructor() {
+    this.#cleanup = () => {
+      for (const proc of this.#processes) {
+        try {
+          proc.kill();
+        } catch (err) {
+          console.error(`Failed to kill process: ${err}`);
+        }
+      }
+    };
+
+    process.once('SIGINT', this.#cleanup);
+    process.once('SIGTERM', this.#cleanup);
+    process.once('exit', this.#cleanup);
+  }
+
+  track(process) {
+    this.#processes.add(process);
+    process.once('exit', () => {
+      this.#processes.delete(process);
+      if (this.#processes.size === 0) {
+        this.dispose();
+      }
+    });
+  }
+
+  dispose() {
+    process.off('SIGINT', this.#cleanup);
+    process.off('SIGTERM', this.#cleanup);
+    process.off('exit', this.#cleanup);
+  }
+}
+
 /**
  * Executes a sequence of shell commands with a flexible error handling policy.
  *
@@ -11,111 +48,100 @@ import path from 'node:path';
  * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
  * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
  */
-export default async ({ commands, fork, parallel, env, wdir = process.cwd(), onError = "stop" }) => {
+export default async function({ commands, fork, parallel, env, wdir = process.cwd(), onError = "stop" }) {
+  const processManager = new ProcessManager();
   const capture = {};
+  const processPromises = [];
 
-  if (commands) {
-    let temp = commands;
-    if (!Array.isArray(commands)) temp = [commands];
-    await processCommands(temp, onError, env, wdir, undefined, capture);
-  }
-  else if (parallel) {
-    await handleParallel(parallel, onError, env, wdir, capture);
-  }
-  else if (fork) {
-    handleFork(fork, onError, env, wdir, capture);
-  }
+  // Create a CommandRunner that holds processManager and provides methods
+  const runner = {
+    processManager,
+    async processCommands(commands, onError, env, wdir, captureName, captureRoot) {
+      const capture = captureName ? { items: [] } : undefined;
 
-  return Object.keys(capture).length ? capture : undefined;
-};
+      for (const cmd of commands) {
+        try {
+          if (typeof cmd === 'string') {
+            await executeCommand(cmd, env, wdir, capture, processManager);
+          } else if (cmd.steps) {
+            if (cmd.useScript) {
+              await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, processManager);
+            } else {
+              await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+            }
+          } else if (cmd.parallel) {
+            await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
+          } else if (cmd.fork) {
+            await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
+          }
+        } catch (error) {
+          console.error(`Error occurred: ${error.message}`);
 
-/**
- * Processes an array of commands, supporting sequential, parallel, forked, and steps executions with error policies.
- *
- * @param {Array} commands - Array of commands or command groups.
- * @param {string} onError - Determines the error handling policy for all modes.
- * @param {Object} [env] - Environment variables to pass to each command.
- * @param {string} [wdir] - Working directory for each command group.
- * @returns {Promise<void>} Resolves when all sequential commands in the array complete.
- */
-async function processCommands(commands, onError, env, wdir = process.cwd(), captureName, captureRoot) {
-  const capture = captureName ? { items: [] } : undefined;
+          const lastError = { message: error.message, command: error.command, code: error.code, onError };
+          captureRoot.error = lastError;
+          captureRoot.errors = captureRoot.errors || [];
+          captureRoot.errors.push(lastError);
 
-  for (const cmd of commands) {
-    try {
-      if (typeof cmd === 'string') {
-        // Execute a single command sequentially
-        await executeCommand(cmd, env, wdir, capture);
+          // TODO: Add a custom formatter and more options for errors
+          captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
 
-      } else if (cmd.steps) {
-        // Execute steps (sequential) commands if explicitly specified
-        if (cmd.useScript) {
-          await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
-        } else {
-          await processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+          if (onError === "stop") break; // Stop execution if onError is "stop"
+          else if (onError === "log") continue; // Log and continue if onError is "log"
+          else if (onError === 'throw') throw error;
         }
-      } else if (cmd.parallel) {
-        // Parallel command execution with error handling
-        await handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
-      } else if (cmd.fork) {
-        // Forked command execution with error handling
-        handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
       }
-    } catch (error) {
-      console.error(`Error occurred: ${error.message}`);
 
-      const lastError = { message: error.message, command: error.command, code: error.code, onError };
-      captureRoot.error = lastError;
-      captureRoot.errors = captureRoot.errors || [];
-      captureRoot.errors.push(lastError);
+      if (capture) {
+        captureRoot[captureName] = capture;
+      }
+    },
 
-      // TODO: Add a custom formatter and more options for errors
-      captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
+    async handleParallel(parallelCommands, onError, env, wdir, captureRoot) {
+      const tasks = parallelCommands.map((cmd) => 
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)
+      );
+      if (onError === 'stop') {
+        await Promise.all(tasks);
+      } else {
+        await Promise.allSettled(tasks);
+      }
+    },
 
-      if (onError === "stop") break; // Stop execution if onError is "stop"
-      else if (onError === "log") continue; // Log and continue if onError is "log"
-      else if (onError === 'throw') throw error;
+    async handleFork(forkCommands, onError, env, wdir, captureRoot) {
+      for (const cmd of forkCommands) {
+        try {
+          await this.processCommands([cmd], onError, env, wdir, undefined, captureRoot);
+        } catch (error) {
+          console.error(`Fork error (log): ${error}`);
+        }
+      }
     }
-  }
+  };
 
-  if (capture) {
-    captureRoot[captureName] = capture;
-  }
-}
-
-/**
- * Executes commands in parallel with optional error handling policy.
- *
- * @param {Array} parallelCommands - Array of commands to execute in parallel.
- * @param {string} onError - Error handling policy for parallel commands: "stop" or "continue".
- * @param {Object} env - Environment variables for the parallel commands.
- * @param {string} wdir - Working directory for the parallel commands.
- */
-async function handleParallel(parallelCommands, onError, env, wdir, captureRoot) {
-  const tasks = parallelCommands.map((cmd) => processCommands([cmd], onError, env, wdir, undefined, captureRoot));
-  if (onError === 'stop') {
-    await Promise.all(tasks); // Waits for all to complete, throws if any error
-  } else {
-    await Promise.allSettled(tasks); // Collects all results, logs errors without stopping
-  }
-}
-
-/**
- * Executes forked commands with optional error handling policy.
- *
- * @param {Array} forkCommands - Array of commands to execute in fork.
- * @param {string} onError - Error handling policy for forked commands: "log".
- * @param {Object} env - Environment variables for the forked commands.
- * @param {string} wdir - Working directory for the forked commands.
- */
-function handleFork(forkCommands, onError, env, wdir, captureRoot) {
-  forkCommands.forEach(async (cmd) => {
-    try {
-      await processCommands([cmd], onError, env, wdir, undefined, captureRoot);
-    } catch (error) {
-      console.error(`Fork error (log): ${error.message}`);
+  try {
+    if (commands) {
+      let temp = commands;
+      if (!Array.isArray(commands)) temp = [commands];
+      processPromises.push(runner.processCommands(temp, onError, env, wdir, undefined, capture));
     }
-  });
+    else if (parallel) {
+      processPromises.push(runner.handleParallel(parallel, onError, env, wdir, capture));
+    }
+    else if (fork) {
+      processPromises.push(...fork.map(cmd => 
+        runner.processCommands([cmd], onError, env, wdir, undefined, capture)
+          .catch(error => {
+            console.error(`Fork error (log): ${error.message}`);
+            if (onError === 'throw') throw error;
+          })
+      ));
+    }
+
+    await Promise.all(processPromises);
+    return Object.keys(capture).length ? capture : undefined;
+  } finally {
+    processManager.dispose();
+  }
 }
 
 /**
@@ -126,16 +152,16 @@ function handleFork(forkCommands, onError, env, wdir, captureRoot) {
  * @param {string} wdir - Working directory for the command.
  * @returns {Promise<void>} Resolves when the command completes.
  */
-async function executeCommand(command, env, wdir, captureParent) {
+async function executeCommand(command, env, wdir, captureParent, processManager) {
   return new Promise((resolve, reject) => {
-    const cwd = wdir ? path.resolve(wdir) : process.cwd();
     const pcs = spawn(command, {
       shell: true,
       stdio: captureParent ? 'pipe' : 'inherit',
       env: env ? { ...process.env, ...env } : process.env,
-      cwd
+      cwd: wdir ? path.resolve(wdir) : process.cwd()
     });
 
+    processManager.track(pcs);
     let capture;
 
     if (captureParent) {
@@ -178,7 +204,7 @@ async function executeCommand(command, env, wdir, captureParent) {
  * @param {string} wdir - Working directory for the commands.
  * @returns {Promise<void>} Resolves when all commands complete.
  */
-async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot) {
+async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot, processManager) {
   const { nanoid } = await import('nanoid');
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
   const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
@@ -222,7 +248,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
       scriptContent += forkCommands.join(' ') + (isWindows ? '' : '\n');
     } else if (step.steps) {
       // Nested steps: Process them directly (not inside the script)
-      await processCommands([step], "stop", env, cwd);
+      await runner.processCommands([step], "stop", env, cwd);
     } else {
       throw new Error('Invalid command structure in steps.');
     }

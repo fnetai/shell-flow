@@ -8,6 +8,8 @@ input: g::file://fnet/input.yaml
 
 features:
   app: false
-  iife: false
+  cli: false
+  t::dev::cli: false
+
   t::dev::s::cli.fargs.default: dev
   t::py::s::runtime.type: python
