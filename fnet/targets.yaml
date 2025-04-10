@@ -7,8 +7,8 @@ npm-default:
     name: "@fnet/shell-flow"
 
 pyip-default:
-  type: pyip
+  type: pypi
   t::py::enabled: true
-  version: "0.1.14"
+  version: "0.1.15"
   params:
     name: fnet_shell_flow

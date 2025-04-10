@@ -107,46 +107,44 @@ async def execute_steps_with_script(steps: List, env: Dict, wdir: str, capture_n
     is_windows = os.name == 'nt'
     
     script_extension = '.bat' if is_windows else '.sh'
+    script_content = ''
+    
+    if not is_windows:
+        script_content += '#!/bin/sh\n\n'
+        
+    for step in steps:
+        if isinstance(step, str):
+            script_content += f"{step} && " if is_windows else f"{step}\n"
+        elif isinstance(step, dict):
+            if "parallel" in step:
+                commands = []
+                for cmd in step["parallel"]:
+                    if isinstance(cmd, str):
+                        commands.append(f"{cmd} &")
+                    else:
+                        raise ValueError("Nested groups not supported in parallel script mode")
+                script_content += " ".join(commands)
+                if not is_windows:
+                    script_content += "\nwait\n"
+            elif "fork" in step:
+                commands = []
+                for cmd in step["fork"]:
+                    if isinstance(cmd, str):
+                        commands.append(f"{cmd} &")
+                    else:
+                        raise ValueError("Nested groups not supported in fork script mode")
+                script_content += " ".join(commands) + ("\n" if not is_windows else "")
+            elif "steps" in step:
+                await process_commands([step], "stop", env, cwd)
+            else:
+                raise ValueError("Invalid command structure in steps")
+
+    if is_windows:
+        script_content = script_content.rstrip().rstrip('&&')
+
     with tempfile.NamedTemporaryFile(mode='w', suffix=script_extension, delete=False) as tmp_file:
         script_path = tmp_file.name
-        
-        if not is_windows:
-            tmp_file.write('#!/bin/sh\n\n')
-            
-        for step in steps:
-            if isinstance(step, str):
-                tmp_file.write(f"{step} && " if is_windows else f"{step}\n")
-            elif isinstance(step, dict):
-                if "parallel" in step:
-                    commands = []
-                    for cmd in step["parallel"]:
-                        if isinstance(cmd, str):
-                            commands.append(f"{cmd} &")
-                        else:
-                            raise ValueError("Nested groups not supported in parallel script mode")
-                    tmp_file.write(" ".join(commands))
-                    if not is_windows:
-                        tmp_file.write("\nwait\n")
-                elif "fork" in step:
-                    commands = []
-                    for cmd in step["fork"]:
-                        if isinstance(cmd, str):
-                            commands.append(f"{cmd} &")
-                        else:
-                            raise ValueError("Nested groups not supported in fork script mode")
-                    tmp_file.write(" ".join(commands) + ("\n" if not is_windows else ""))
-                elif "steps" in step:
-                    await process_commands([step], "stop", env, cwd)
-                else:
-                    raise ValueError("Invalid command structure in steps")
-
-        if is_windows:
-            content = tmp_file.name
-            with open(content, 'r') as f:
-                script_content = f.read().rstrip()
-                script_content = script_content.rstrip('&& ')
-            with open(content, 'w') as f:
-                f.write(script_content)
+        tmp_file.write(script_content)
 
     try:
         os.chmod(script_path, 0o755)
@@ -164,7 +162,7 @@ async def handle_parallel(parallel_commands: List, on_error: str, env: Dict, wdi
     Executes commands in parallel with error handling.
     """
     tasks = [process_commands([cmd], on_error, env, wdir, None, capture_root) 
-             for cmd in parallel_commands]
+            for cmd in parallel_commands]
     
     if on_error == "stop":
         await asyncio.gather(*tasks)
@@ -182,7 +180,7 @@ async def handle_fork(fork_commands: List, on_error: str, env: Dict, wdir: str, 
             print(f"Fork error (log): {error}")
 
 async def process_commands(commands: List, on_error: str, env: Dict, wdir: str, 
-                         capture_name: Optional[str] = None, capture_root: Optional[Dict] = None) -> None:
+                        capture_name: Optional[str] = None, capture_root: Optional[Dict] = None) -> None:
     """
     Processes command sequences with error handling.
     """
@@ -252,98 +250,36 @@ async def process_commands(commands: List, on_error: str, env: Dict, wdir: str,
     if capture and capture_name and capture_root is not None:
         capture_root[capture_name] = capture
 
-async def _run(commands: Union[List, str], on_error: str = "stop", env: Optional[Dict] = None, 
-              wdir: Optional[str] = None) -> Optional[Dict]:
+async def _run(*, commands: Union[List, str] = None, fork: List = None, 
+              parallel: List = None, on_error: str = "stop", 
+              env: Optional[Dict] = None, wdir: Optional[str] = None) -> Optional[Dict]:
     """
     Internal async runner for the shell commands.
     """
     capture_root = {}
+    process_manager = ProcessManager()
     
-    if not isinstance(commands, list):
-        commands = [commands]
-        
-    await process_commands(
-        commands,
-        on_error,
-        env or os.environ.copy(),
-        wdir or os.getcwd(),
-        None,
-        capture_root
-    )
-    
-    return capture_root if capture_root else None
+    try:
+        if commands:
+            temp = commands if isinstance(commands, list) else [commands]
+            await process_commands(temp, on_error, env or os.environ.copy(), 
+                                wdir or os.getcwd(), None, capture_root)
+        elif parallel:
+            await handle_parallel(parallel, on_error, env or os.environ.copy(), 
+                                wdir or os.getcwd(), capture_root)
+        elif fork:
+            await handle_fork(fork, on_error, env or os.environ.copy(), 
+                            wdir or os.getcwd(), capture_root)
+            
+        return capture_root if capture_root else None
+    finally:
+        process_manager.dispose()
 
-def default(commands: Union[List, str], on_error: str = "stop", env: Optional[Dict] = None,
-          wdir: Optional[str] = None) -> Optional[Dict]:
+def default(*, commands: Union[List, str] = None, fork: List = None,
+            parallel: List = None, on_error: str = "stop",
+            env: Optional[Dict] = None, wdir: Optional[str] = None) -> Optional[Dict]:
     """
     Main entry point for processing shell commands.
     """
-    return asyncio.run(_run(commands, on_error, env, wdir))
-
-if __name__ == "__main__":
-    commands = [
-        "echo 'Starting Test Pipeline!'",
-        {
-            "steps": [
-                "echo 'Step 1: Initialize'",
-                {
-                    "parallel": [
-                        {
-                            "steps": [
-                                "echo 'Parallel Block 1 - Task 1'",
-                                "echo 'Parallel Block 1 - Task 2'",
-                                "invalid-parallel-block-1-task"
-                            ],
-                            "onError": "continue",
-                            "captureName": "parallel_block_1_capture"
-                        },
-                        {
-                            "steps": [
-                                "echo 'Parallel Block 2 - Task 1'",
-                                "echo 'Parallel Block 2 - Task 2'"
-                            ],
-                            "captureName": "parallel_block_2_capture",
-                            "onError": "log"
-                        }
-                    ],
-                    "onError": "log"
-                },
-                "echo 'Step 2: Intermediate Cleanup'",
-                {
-                    "fork": [
-                        "echo 'Fork Task 1'",
-                        "invalid-fork-task",
-                        "echo 'Fork Task 3'"
-                    ],
-                    "onError": "continue"
-                },
-                "echo 'Step 3: Processing'",
-                {
-                    "steps": [
-                        {
-                            "steps": [
-                                "echo 'Nested Capture Step A'",
-                                "invalid-nested-step-command",
-                                "echo 'Nested Capture Step B'"
-                            ],
-                            "captureName": "nested_capture",
-                            "onError": "log"
-                        },
-                        "echo 'Final Task in Processing'"
-                    ],
-                    "captureName": "processing_capture"
-                },
-                "echo 'Pipeline Completed!'"
-            ],
-            "onError": "continue"
-        }
-    ]
-
-    process_manager = ProcessManager()
-    try:
-        results = default(commands=commands, on_error="log")
-        print("Execution Results:", results)
-    except Exception as e:
-        print("Error during execution:", str(e))
-    finally:
-        process_manager.dispose()
+    return asyncio.run(_run(commands=commands, fork=fork, parallel=parallel,
+                          on_error=on_error, env=env, wdir=wdir))
