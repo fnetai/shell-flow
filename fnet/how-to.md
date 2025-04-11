@@ -2,11 +2,9 @@
 
 ## Overview
 
-The `@fnet/shell-flow` library provides developers with a streamlined way to execute shell commands in sequence, parallel, or as background processes. It offers robust error handling, output capture, and environment management capabilities. This library is particularly useful for automating complex workflows and managing shell-based operations.
+The `@fnet/shell-flow` library provides developers with a streamlined way to execute shell commands in sequence, parallel, or as background processes. It offers robust error handling, output capture, and environment management capabilities.
 
 ## Installation
-
-To include `@fnet/shell-flow` in your project, run one of the following commands:
 
 ```bash
 npm install @fnet/shell-flow
@@ -19,19 +17,19 @@ yarn add @fnet/shell-flow
 ### Execution Modes
 
 1. **Sequential Execution** (`commands`): Commands are executed one after another
-2. **Parallel Execution** (`parallel`): Commands are executed concurrently, waiting for all to complete
-3. **Background Execution** (`fork`): Commands are executed in the background without waiting
+2. **Parallel Execution** (`parallel`): Commands are executed concurrently
+3. **Background Execution** (`fork`): Commands are executed in the background
 
 ### Error Handling Policies
 
 - `"stop"`: Halts execution on first error (default)
-- `"continue"`: Skips errors and continues execution
+- `"continue"`: Continues execution despite errors
 - `"log"`: Logs errors and continues execution
-- `"throw"`: Throws error and stops execution
+- `"throw"`: Throws error immediately
 
 ## Basic Usage
 
-### Sequential Command Execution
+### Sequential Commands
 
 ```javascript
 import shellFlow from '@fnet/shell-flow';
@@ -40,20 +38,18 @@ await shellFlow({
   commands: [
     'echo "First command"',
     'echo "Second command"'
-  ],
-  onError: 'stop'
+  ]
 });
 ```
 
-### Parallel Command Execution
+### Parallel Commands
 
 ```javascript
 await shellFlow({
   parallel: [
     'npm run test:unit',
     'npm run test:integration'
-  ],
-  onError: 'continue'
+  ]
 });
 ```
 
@@ -64,8 +60,7 @@ await shellFlow({
   fork: [
     'npm run watch',
     'npm run dev-server'
-  ],
-  onError: 'log'
+  ]
 });
 ```
 
@@ -73,7 +68,7 @@ await shellFlow({
 
 ### Command Groups
 
-Commands can be grouped using `steps`, `parallel`, or `fork`:
+Group related commands with additional options:
 
 ```javascript
 await shellFlow({
@@ -81,8 +76,7 @@ await shellFlow({
     {
       steps: [
         'npm install',
-        'npm run build',
-        'npm run test'
+        'npm run build'
       ],
       onError: 'stop',
       captureName: 'build_output'
@@ -93,7 +87,7 @@ await shellFlow({
 
 ### Output Capture
 
-Use `captureName` to capture command output:
+Capture command output for processing:
 
 ```javascript
 const result = await shellFlow({
@@ -105,12 +99,12 @@ const result = await shellFlow({
   ]
 });
 
-console.log(result.greeting.stdout); // "Hello World\n"
+console.log(result.greeting.stdout);
 ```
 
 ### Environment Variables
 
-Set environment variables globally or per command group:
+Set environment variables globally or per command:
 
 ```javascript
 await shellFlow({
@@ -130,7 +124,7 @@ await shellFlow({
 
 ### Working Directory
 
-Specify working directory globally or per command group:
+Specify working directory:
 
 ```javascript
 await shellFlow({
@@ -146,7 +140,7 @@ await shellFlow({
 
 ### Script Mode
 
-Use `useScript` for complex shell operations:
+Use shell script features:
 
 ```javascript
 await shellFlow({
@@ -155,8 +149,7 @@ await shellFlow({
       steps: [
         'set -e',
         'echo "Starting build"',
-        'npm run build',
-        'echo "Build complete"'
+        'npm run build'
       ],
       useScript: true,
       captureName: 'build_log'
@@ -165,73 +158,9 @@ await shellFlow({
 });
 ```
 
-## Complex Examples
-
-### Build Pipeline with Mixed Execution
-
-```javascript
-await shellFlow({
-  commands: [
-    'echo "Starting pipeline"',
-    {
-      parallel: [
-        {
-          steps: [
-            'npm install',
-            'npm run build'
-          ],
-          captureName: 'build_output'
-        },
-        {
-          fork: [
-            'npm run watch',
-            'npm run test:watch'
-          ]
-        }
-      ]
-    },
-    {
-      steps: [
-        'docker build -t myapp .',
-        'docker push myapp'
-      ],
-      env: {
-        DOCKER_BUILDKIT: '1'
-      }
-    }
-  ],
-  wdir: '/project/root',
-  onError: 'stop'
-});
-```
-
-### Error Handling Demonstration
-
-```javascript
-await shellFlow({
-  parallel: [
-    {
-      steps: [
-        'echo "Task 1"',
-        'invalid-command-1'
-      ],
-      onError: 'continue'
-    },
-    {
-      steps: [
-        'echo "Task 2"',
-        'invalid-command-2'
-      ],
-      onError: 'log'
-    }
-  ],
-  onError: 'stop'
-});
-```
-
 ## Error Handling
 
-The library provides detailed error information:
+Handle command failures:
 
 ```javascript
 try {
@@ -248,18 +177,18 @@ try {
 
 ## Best Practices
 
-1. Always specify an error handling policy appropriate for your use case
-2. Use `captureName` when you need to process command output
-3. Leverage `useScript` for commands requiring shell features
-4. Group related commands using `steps`, `parallel`, or `fork`
+1. Use appropriate error handling policy for your use case
+2. Capture output when you need to process command results
+3. Use script mode for shell-specific features
+4. Group related commands using steps
 5. Set environment variables at the most specific scope needed
-6. Use working directory (`wdir`) to ensure correct command context
+6. Use working directory to ensure correct command context
 
 ## Limitations
 
 - Nested parallel/fork operations in script mode are not supported
-- Output capture is not available for parallel and fork operations
-- Windows support may vary for certain shell features
+- Output capture is limited to sequential commands
+- Some shell features may have platform-specific behavior
 
 ## Support
 

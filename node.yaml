@@ -7,6 +7,7 @@ s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 input: g::file://fnet/input.yaml
 
 features:
+  dts: true
   app: false
     
   t::dev::s::cli.fargs.default: dev

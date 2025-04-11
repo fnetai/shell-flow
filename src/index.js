@@ -41,12 +41,46 @@ class ProcessManager {
 }
 
 /**
- * Executes a sequence of shell commands with a flexible error handling policy.
- *
- * @param {Object} args - The arguments object.
- * @param {Array|string|Object} args.commands - Command string or array of commands or command groups to execute.
- * @param {string} [args.onError="stop"] - Error handling policy: "stop", "continue", or "log".
- * @returns {Promise<void>} Resolves when all commands complete or rejects based on the error policy.
+ * @typedef {Object} CommandGroup
+ * @property {string[]} [steps] - Array of sequential commands
+ * @property {string[]} [parallel] - Array of parallel commands
+ * @property {string[]} [fork] - Array of background commands
+ * @property {string} [onError="stop"] - Error handling policy: "stop", "continue", "log", or "throw"
+ * @property {Object} [env] - Environment variables for the commands
+ * @property {string} [wdir] - Working directory for the commands
+ * @property {string} [captureName] - Name to capture command output
+ * @property {boolean} [useScript=false] - Whether to execute commands in a script file
+ */
+
+/**
+ * @typedef {Object} Input
+ * @property {(string|string[]|CommandGroup)[]} [commands] - Sequential commands to execute
+ * @property {(string|CommandGroup)[]} [parallel] - Commands to execute in parallel
+ * @property {(string|CommandGroup)[]} [fork] - Commands to execute in background
+ * @property {string} [onError="stop"] - Global error handling policy
+ * @property {Object} [env] - Global environment variables
+ * @property {string} [wdir=process.cwd()] - Global working directory
+ */
+
+/**
+ * @typedef {Object} CaptureResult
+ * @property {string} stdout - Command's standard output
+ * @property {string} stderr - Command's standard error
+ * @property {number} code - Exit code
+ */
+
+/**
+ * @typedef {Object} Output
+ * @property {Object.<string, CaptureResult>} [captures] - Captured outputs by captureName
+ * @property {Object} [error] - Last error details if any occurred
+ * @property {Object[]} [errors] - Array of all errors that occurred
+ */
+
+/**
+ * Executes shell commands with flexible execution modes and error handling.
+ * @param {Input} args - The configuration object
+ * @returns {Promise<Output|undefined>} Command execution results if any output was captured
+ * @throws {Error} When command execution fails and onError is "throw"
  */
 export default async function({ commands, fork, parallel, env, wdir = process.cwd(), onError = "stop" }) {
   const processManager = new ProcessManager();

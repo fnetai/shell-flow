@@ -2,21 +2,21 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 type: object
 properties:
   commands:
-    description: Command string or array of commands or command groups to execute.
+    description: Sequential commands to execute
     type: array
     items:
       oneOf:
         - type: string
         - $ref: "#/$defs/commandGroup"
   fork:
-    description: Forked command string or array of commands or command groups to execute.
+    description: Commands to execute in background
     type: array
     items:
       oneOf:
         - type: string
         - $ref: "#/$defs/commandGroup"
   parallel:
-    description: Parallel command string or array of commands or command groups to execute.
+    description: Commands to execute in parallel
     type: array
     items:
       oneOf:
@@ -26,16 +26,16 @@ properties:
     type: string
     default: "stop"
     enum: ["stop", "continue", "log", "throw"]
-    description: |
-      Global error handling policy: "stop", "continue", or "log".
+    description: Global error handling policy
   env:
     type: object
     additionalProperties: true
-    description: Environment variables.
+    description: Global environment variables
   wdir:
     type: string
-    description: Working directory.
-# Enforce that exactly one of commands, fork, or parallel is provided.
+    default: "process.cwd()"
+    description: Global working directory
+
 oneOf:
   - required: ["commands"]
     not:
@@ -52,6 +52,7 @@ oneOf:
       anyOf:
         - required: ["commands"]
         - required: ["fork"]
+
 $defs:
   commandGroup:
     type: object
@@ -63,43 +64,39 @@ $defs:
           oneOf:
             - type: string
             - $ref: "#/$defs/commandGroup"
-        description: Array of commands to execute sequentially in steps.
+        description: Array of sequential commands
       parallel:
         type: array
         items:
           oneOf:
             - type: string
             - $ref: "#/$defs/commandGroup"
-        description: Array of commands to execute in parallel.
+        description: Array of parallel commands
       fork:
         type: array
         items:
           oneOf:
             - type: string
             - $ref: "#/$defs/commandGroup"
-        description: Array of commands to execute in fork.
+        description: Array of background commands
       env:
         type: object
         additionalProperties: true
-        description: Environment variables for the command group.
+        description: Environment variables for the command group
       wdir:
         type: string
-        description: Working directory for the command group.
+        description: Working directory for the command group
       onError:
         type: string
-        enum: ["stop", "continue", "log"]
-        description: Error handling policy for this command group.
+        enum: ["stop", "continue", "log", "throw"]
+        description: Error handling policy for this command group
       useScript:
         type: boolean
         default: false
-        description: |
-          If true, steps commands in this group are executed via a temporary script file. 
-          Ignored for parallel and fork.
+        description: Whether to execute commands in a script file
       captureName:
         type: string
-        description: |
-          If set, the output of the command group is captured and stored with this name.
-          Ignored for parallel and fork.
+        description: Name to capture command output
     oneOf:
       - required: ["steps"]
       - required: ["parallel"]
