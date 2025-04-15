@@ -49,12 +49,15 @@ class ProcessManager {
 function resolveTemplates(str, context) {
   if (typeof str !== 'string' || !context) return str;
 
-  return str.replace(/\{\{(!)?[^\S\r\n]*([^}|]+?)(?:\s*\|\|\s*([^}|]*))?\s*\}\}/g, (match, strict, path, defaultValue) => {
-    if (strict && defaultValue !== undefined) {
+  return str.replace(/\{\{([^}|]+?)(!)?(?:\s*\?\s*([^}|]+?))?(?:\s*\|\|\s*([^}|]*))?\s*\}\}/g, (match, path, modifier, conditionalValue, defaultValue) => {
+    // Handle strict mode with default value error
+    if (modifier === '!' && defaultValue !== undefined) {
       throw new Error(`Cannot use strict mode (!) with default value for template variable: ${path.trim()}`);
     }
 
     const trimmedPath = path.trim();
+
+    // Template resolution logic
     const value = trimmedPath
       .replace(/\[(['"]?\w+['"]?)\]/g, '.$1')
       .split('.')
@@ -65,9 +68,14 @@ function resolveTemplates(str, context) {
         return /^\d+$/.test(key) ? obj[parseInt(key, 10)] : obj[key];
       }, context);
 
+    // Handle conditional value
+    if (conditionalValue !== undefined) {
+      return value !== undefined ? conditionalValue.trim() : '';
+    }
+
     if (value !== undefined) return String(value);
     if (defaultValue !== undefined) return defaultValue.trim() || '';
-    if (strict) {
+    if (modifier === '!') {
       throw new Error(`Required template variable not found: ${trimmedPath}`);
     }
     return '';
