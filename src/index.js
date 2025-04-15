@@ -41,6 +41,55 @@ class ProcessManager {
 }
 
 /**
+ * Resolves template variables in a string using context
+ * @param {string} str - String with templates
+ * @param {Object} context - Context object
+ * @returns {string} Processed string
+ */
+function resolveTemplates(str, context) {
+  if (typeof str !== 'string' || !context) return str;
+  
+  return str.replace(/\{\{([^}]+?)([\!?])?\}\}/g, (match, path, flag) => {
+    // Handle both dot notation and array access
+    const value = path.trim()
+      .replace(/\[(\w+)\]/g, '.$1') // Convert [0] to .0
+      .split('.')
+      .reduce((obj, key) => {
+        // Handle array indices
+        if (/^\d+$/.test(key)) {
+          return obj?.[parseInt(key, 10)];
+        }
+        return obj?.[key];
+      }, context);
+
+    if (value !== undefined) return String(value);
+    
+    if (flag === '!') throw new Error(`Required value '${path.trim()}' not found in context`);
+    if (flag === '?') return '';
+    return match;
+  });
+}
+
+/**
+ * Processes templates in an object or array recursively
+ * @param {*} input - Input to process
+ * @param {Object} context - Context object
+ * @returns {*} Processed input
+ */
+function processTemplates(input, context) {
+  if (!input) return input;
+  
+  if (typeof input === 'string') return resolveTemplates(input, context || {});
+  if (Array.isArray(input)) return input.map(item => processTemplates(item, context));
+  if (typeof input === 'object') {
+    return Object.fromEntries(
+      Object.entries(input).map(([k, v]) => [k, processTemplates(v, context)])
+    );
+  }
+  return input;
+}
+
+/**
  * @typedef {Object} CommandGroup
  * @property {string[]} [steps] - Array of sequential commands
  * @property {string[]} [parallel] - Array of parallel commands
@@ -60,6 +109,7 @@ class ProcessManager {
  * @property {string} [onError="stop"] - Global error handling policy
  * @property {Object} [env] - Global environment variables
  * @property {string} [wdir=process.cwd()] - Global working directory
+ * @property {Object} [context] - Template context object
  */
 
 /**
@@ -82,7 +132,22 @@ class ProcessManager {
  * @returns {Promise<Output|undefined>} Command execution results if any output was captured
  * @throws {Error} When command execution fails and onError is "throw"
  */
-export default async function({ commands, fork, parallel, env, wdir = process.cwd(), onError = "stop" }) {
+export default async function({ 
+  commands, 
+  fork, 
+  parallel, 
+  env, 
+  wdir = process.cwd(), 
+  onError = "stop",
+  context = {} 
+}) {
+  // Process templates in all inputs
+  const processedCommands = processTemplates(commands, context);
+  const processedFork = processTemplates(fork, context);
+  const processedParallel = processTemplates(parallel, context);
+  const processedEnv = processTemplates(env, context);
+  const processedWdir = processTemplates(wdir, context);
+
   const processManager = new ProcessManager();
   const capture = {};
   const processPromises = [];
@@ -153,17 +218,17 @@ export default async function({ commands, fork, parallel, env, wdir = process.cw
   };
 
   try {
-    if (commands) {
-      let temp = commands;
-      if (!Array.isArray(commands)) temp = [commands];
-      processPromises.push(runner.processCommands(temp, onError, env, wdir, undefined, capture));
+    if (processedCommands) {
+      let temp = processedCommands;
+      if (!Array.isArray(processedCommands)) temp = [processedCommands];
+      processPromises.push(runner.processCommands(temp, onError, processedEnv, processedWdir, undefined, capture));
     }
-    else if (parallel) {
-      processPromises.push(runner.handleParallel(parallel, onError, env, wdir, capture));
+    else if (processedParallel) {
+      processPromises.push(runner.handleParallel(processedParallel, onError, processedEnv, processedWdir, capture));
     }
-    else if (fork) {
-      processPromises.push(...fork.map(cmd => 
-        runner.processCommands([cmd], onError, env, wdir, undefined, capture)
+    else if (processedFork) {
+      processPromises.push(...processedFork.map(cmd => 
+        runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture)
           .catch(error => {
             console.error(`Fork error (log): ${error.message}`);
             if (onError === 'throw') throw error;

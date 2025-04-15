@@ -35,6 +35,10 @@ properties:
     type: string
     default: "process.cwd()"
     description: Global working directory
+  context:
+    type: object
+    additionalProperties: true
+    description: Template context object for variable substitution
 
 oneOf:
   - required: ["commands"]

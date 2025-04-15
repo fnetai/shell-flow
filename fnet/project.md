@@ -92,6 +92,23 @@ Development:
 3. [x] Phase 2: Shared settings
 4. [ ] Phase 3: Cross-platform compatibility
 
+### Template Support
+
+Features:
+
+- [ ] Double brace syntax {{variable}}
+- [ ] Error handling flags ({{var!}} required, {{var?}} optional)
+- [ ] Dot notation for nested objects ({{app.config.port}})
+- [ ] Array access support ({{services[0].name}})
+- [ ] Mixed dot and array notation ({{config.envs[1].port}})
+
+Development:
+
+1. [ ] Phase 1: Basic variable substitution
+2. [ ] Phase 1: Required/Optional flags
+3. [ ] Phase 2: Nested object support
+4. [ ] Phase 2: Array access support
+
 ## Success Criteria
 
 We'll know we've succeeded when:
