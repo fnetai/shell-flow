@@ -48,23 +48,29 @@ class ProcessManager {
  */
 function resolveTemplates(str, context) {
   if (typeof str !== 'string' || !context) return str;
-  
+
   return str.replace(/\{\{([^}]+?)([\!?])?\}\}/g, (match, path, flag) => {
     // Handle both dot notation and array access
     const value = path.trim()
-      .replace(/\[(\w+)\]/g, '.$1') // Convert [0] to .0
+      .replace(/\[(['"]?\w+['"]?)\]/g, '.$1')
       .split('.')
       .reduce((obj, key) => {
+        if (!obj || !Object.prototype.hasOwnProperty.call(obj, key)) {
+          return undefined;
+        }
         // Handle array indices
         if (/^\d+$/.test(key)) {
-          return obj?.[parseInt(key, 10)];
+          return obj[parseInt(key, 10)];
         }
-        return obj?.[key];
+        return obj[key];
       }, context);
 
     if (value !== undefined) return String(value);
-    
-    if (flag === '!') throw new Error(`Required value '${path.trim()}' not found in context`);
+
+    if (flag === '!') throw new Error(
+      `Required value '${path.trim()}' not found in context. ` +
+      `Available keys: ${Object.keys(context).join(', ')}`
+    );
     if (flag === '?') return '';
     return match;
   });
@@ -78,7 +84,7 @@ function resolveTemplates(str, context) {
  */
 function processTemplates(input, context) {
   if (!input) return input;
-  
+
   if (typeof input === 'string') return resolveTemplates(input, context || {});
   if (Array.isArray(input)) return input.map(item => processTemplates(item, context));
   if (typeof input === 'object') {
@@ -132,15 +138,16 @@ function processTemplates(input, context) {
  * @returns {Promise<Output|undefined>} Command execution results if any output was captured
  * @throws {Error} When command execution fails and onError is "throw"
  */
-export default async function({ 
-  commands, 
-  fork, 
-  parallel, 
-  env, 
-  wdir = process.cwd(), 
+export default async function ({
+  commands,
+  fork,
+  parallel,
+  env,
+  wdir,
   onError = "stop",
-  context = {} 
+  context = {}
 }) {
+  wdir = wdir || process.cwd();
   // Process templates in all inputs
   const processedCommands = processTemplates(commands, context);
   const processedFork = processTemplates(fork, context);
@@ -196,7 +203,7 @@ export default async function({
     },
 
     async handleParallel(parallelCommands, onError, env, wdir, captureRoot) {
-      const tasks = parallelCommands.map((cmd) => 
+      const tasks = parallelCommands.map((cmd) =>
         this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)
       );
       if (onError === 'stop') {
@@ -227,7 +234,7 @@ export default async function({
       processPromises.push(runner.handleParallel(processedParallel, onError, processedEnv, processedWdir, capture));
     }
     else if (processedFork) {
-      processPromises.push(...processedFork.map(cmd => 
+      processPromises.push(...processedFork.map(cmd =>
         runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture)
           .catch(error => {
             console.error(`Fork error (log): ${error.message}`);
