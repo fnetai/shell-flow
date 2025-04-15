@@ -49,30 +49,28 @@ class ProcessManager {
 function resolveTemplates(str, context) {
   if (typeof str !== 'string' || !context) return str;
 
-  return str.replace(/\{\{([^}]+?)([\!?])?\}\}/g, (match, path, flag) => {
-    // Handle both dot notation and array access
-    const value = path.trim()
+  return str.replace(/\{\{(!)?[^\S\r\n]*([^}|]+?)(?:\s*\|\|\s*([^}|]*))?\s*\}\}/g, (match, strict, path, defaultValue) => {
+    if (strict && defaultValue !== undefined) {
+      throw new Error(`Cannot use strict mode (!) with default value for template variable: ${path.trim()}`);
+    }
+
+    const trimmedPath = path.trim();
+    const value = trimmedPath
       .replace(/\[(['"]?\w+['"]?)\]/g, '.$1')
       .split('.')
       .reduce((obj, key) => {
         if (!obj || !Object.prototype.hasOwnProperty.call(obj, key)) {
           return undefined;
         }
-        // Handle array indices
-        if (/^\d+$/.test(key)) {
-          return obj[parseInt(key, 10)];
-        }
-        return obj[key];
+        return /^\d+$/.test(key) ? obj[parseInt(key, 10)] : obj[key];
       }, context);
 
     if (value !== undefined) return String(value);
-
-    if (flag === '!') throw new Error(
-      `Required value '${path.trim()}' not found in context. ` +
-      `Available keys: ${Object.keys(context).join(', ')}`
-    );
-    if (flag === '?') return '';
-    return match;
+    if (defaultValue !== undefined) return defaultValue.trim() || '';
+    if (strict) {
+      throw new Error(`Required template variable not found: ${trimmedPath}`);
+    }
+    return '';
   });
 }
 

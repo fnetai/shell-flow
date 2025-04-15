@@ -97,17 +97,20 @@ Development:
 Features:
 
 - [x] Double brace syntax {{variable}}
-- [x] Error handling flags ({{var!}} required, {{var?}} optional)
+- [x] Default values ({{var || default}})
+- [x] Strict mode for required values ({{! var}})
 - [x] Dot notation for nested objects ({{app.config.port}})
 - [x] Array access support ({{services[0].name}})
 - [x] Mixed dot and array notation ({{config.envs[1].port}})
+- [x] Error throwing for missing required values
 
 Development:
 
 1. [x] Phase 1: Basic variable substitution
-2. [x] Phase 1: Required/Optional flags
+2. [x] Phase 1: Default value support
 3. [x] Phase 2: Nested object support
 4. [x] Phase 2: Array access support
+5. [x] Phase 2: Strict mode with error throwing
 
 ## Success Criteria
 
