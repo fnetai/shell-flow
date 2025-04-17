@@ -7,7 +7,40 @@ properties:
     items:
       oneOf:
         - type: string
-        - $ref: "#/$defs/commandGroup"
+        - type: object
+          properties:
+            fork:
+              oneOf:
+                - type: string
+                - type: array
+                  items:
+                    oneOf:
+                      - type: string
+                      - $ref: "#/$defs/commandGroup"
+            steps:
+              type: array
+              items:
+                oneOf:
+                  - type: string
+                  - $ref: "#/$defs/commandGroup"
+            parallel:
+              oneOf:
+                - type: string
+                - type: array
+                  items:
+                    oneOf:
+                      - type: string
+                      - $ref: "#/$defs/commandGroup"
+            onError:
+              type: string
+              enum: ["stop", "continue", "log", "throw"]
+            env:
+              type: object
+              additionalProperties: true
+            wdir:
+              type: string
+            captureName:
+              type: string
   fork:
     description: Commands to execute in background
     type: array

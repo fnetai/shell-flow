@@ -220,13 +220,16 @@ export default async function ({
     },
 
     async handleFork(forkCommands, onError, env, wdir, captureRoot) {
-      for (const cmd of forkCommands) {
-        try {
-          await this.processCommands([cmd], onError, env, wdir, undefined, captureRoot);
-        } catch (error) {
-          console.error(`Fork error (log): ${error}`);
-        }
-      }
+      // Handle both string and array inputs
+      const commands = typeof forkCommands === 'string' ? [forkCommands] : forkCommands;
+      
+      // Don't await the promises, just start them and continue
+      commands.forEach(cmd => {
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)
+          .catch(error => {
+            console.error(`Fork error (log): ${error}`);
+          });
+      });
     }
   };
 

@@ -85,6 +85,29 @@ await shellFlow({
 });
 ```
 
+### Mixed Execution Modes
+
+Combine different execution modes:
+
+```javascript
+await shellFlow({
+  commands: [
+    'echo "Starting build process"',
+    {
+      parallel: [
+        'npm run test:unit',
+        'npm run test:integration'
+      ]
+    },
+    'echo "Tests completed"'
+  ],
+  fork: [
+    'npm run watch:css',
+    'npm run watch:js'
+  ]
+});
+```
+
 ### Output Capture
 
 Capture command output for processing:
@@ -183,6 +206,8 @@ try {
 4. Group related commands using steps
 5. Set environment variables at the most specific scope needed
 6. Use working directory to ensure correct command context
+7. Use `fork` for long-running background processes
+8. Use `parallel` for concurrent tasks that need to complete before continuing
 
 ## Limitations
 
