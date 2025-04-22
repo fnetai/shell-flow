@@ -1,22 +1,23 @@
 # @fnet/shell-flow
 
-The `@fnet/shell-flow` module is a utility designed to facilitate the execution of shell commands with a versatile error handling mechanism. This tool aims to provide users with flexibility in controlling the flow of command execution, including support for sequential, parallel, and forked command execution patterns.
+## Introduction
+
+The `@fnet/shell-flow` project is designed to simplify the process of executing shell commands within a Node.js environment. It offers a structured way to orchestrate command execution sequences with customizable error handling, allowing for execution in parallel, in sequence, or in the background. Users looking to run a series of shell commands programmatically will find this tool helpful for managing and capturing command outputs.
 
 ## How It Works
 
-This module allows users to execute shell commands from JavaScript or TypeScript code by defining an array of command strings or groups. Users can specify an error handling policy, choosing whether to stop execution on error, continue executing remaining commands, or simply log errors without halting progress. 
-
-When you provide a list or sequence of commands, the module will process them based on the defined structure — either running them one after the other, simultaneously, or as split processes, depending on the setup. It captures and handles output and errors effectively, and if needed, can create temporary script files to execute more complex workflows.
+At its core, `@fnet/shell-flow` accepts a configuration object that specifies the commands to run, the working environment, and error handling strategies. Commands can be executed in sequence, parallel, or as background processes. The process manager integrated into the system ensures that all spawned processes are tracked and can be cleanly terminated if necessary. Additionally, it supports the use of templates for environment variables, enabling dynamic command configurations based on the user's context.
 
 ## Key Features
 
-- **Sequential Execution**: Run commands one after the other in a specified order.
-- **Parallel Execution**: Execute multiple commands simultaneously without waiting for each one to finish before starting the next.
-- **Forked Execution**: Run commands as background processes.
-- **Flexible Error Handling**: Define policy to stop, continue, or log errors during execution.
-- **Environment and Directory Control**: Specify environment variables and working directories for command execution.
-- **Temporary Script File Creation**: Handle complex sequences via temporary shell scripts when necessary.
+- **Sequential Command Execution**: Run commands one after the other, halting on errors if required.
+- **Parallel Command Execution**: Execute multiple commands simultaneously for increased efficiency.
+- **Background Execution**: Fork commands to run in the background, allowing the main process to continue without waiting.
+- **Error Handling**: Customize how to handle command errors with options to stop, continue, log, or throw errors.
+- **Environment Variable Support**: Flexibly manage environment configurations per command or globally.
+- **Template Resolution**: Process string templates embedded in commands for dynamic parameter substitution.
+- **Capture Command Outputs**: Store and access command outputs for further processing or logging.
 
 ## Conclusion
 
-`@fnet/shell-flow` offers practical functionality for managing and executing shell commands with a simple API, giving users flexibility and control over how commands are run and errors are handled. This utility can be an asset for developers looking to integrate command-line operations into their applications with ease and clarity.
+`@fnet/shell-flow` provides a modest yet effective tool for managing shell command execution within a Node.js application. It allows developers to streamline their workflow by running and controlling multiple commands efficiently, with robust error handling and output capturing capabilities. This makes it suitable for automation scripts, build systems, and various development tasks requiring programmatic shell command executions.

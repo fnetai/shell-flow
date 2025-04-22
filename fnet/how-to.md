@@ -12,20 +12,46 @@ npm install @fnet/shell-flow
 yarn add @fnet/shell-flow
 ```
 
-## Core Concepts
+## Core Types
 
-### Execution Modes
+### CommandGroup
 
-1. **Sequential Execution** (`commands`): Commands are executed one after another
-2. **Parallel Execution** (`parallel`): Commands are executed concurrently
-3. **Background Execution** (`fork`): Commands are executed in the background
+```typescript
+{
+  steps?: string[];           // Array of sequential commands
+  parallel?: string[];        // Array of parallel commands
+  fork?: string[];           // Array of background commands
+  onError?: "stop" | "continue" | "log" | "throw";  // Error handling policy
+  env?: Record<string, any>;  // Environment variables
+  wdir?: string;             // Working directory
+  captureName?: string;      // Name to capture output
+  useScript?: boolean;       // Whether to execute in script mode
+}
+```
 
-### Error Handling Policies
+### Input Configuration
 
-- `"stop"`: Halts execution on first error (default)
-- `"continue"`: Continues execution despite errors
-- `"log"`: Logs errors and continues execution
-- `"throw"`: Throws error immediately
+```typescript
+{
+  commands?: (string | CommandGroup)[];  // Sequential commands
+  parallel?: (string | CommandGroup)[];  // Parallel commands
+  fork?: (string | CommandGroup)[];      // Background commands
+  onError?: "stop" | "continue" | "log" | "throw";  // Global error policy
+  env?: Record<string, any>;  // Global environment variables
+  wdir?: string;             // Global working directory (defaults to process.cwd())
+  context?: Record<string, any>;  // Template context object
+}
+```
+
+### CaptureResult
+
+```typescript
+{
+  stdout: string;    // Command's standard output
+  stderr: string;    // Command's standard error
+  code: number;      // Exit code
+}
+```
 
 ## Basic Usage
 
@@ -68,8 +94,6 @@ await shellFlow({
 
 ### Command Groups
 
-Group related commands with additional options:
-
 ```javascript
 await shellFlow({
   commands: [
@@ -87,8 +111,6 @@ await shellFlow({
 
 ### Mixed Execution Modes
 
-Combine different execution modes:
-
 ```javascript
 await shellFlow({
   commands: [
@@ -98,8 +120,7 @@ await shellFlow({
         'npm run test:unit',
         'npm run test:integration'
       ]
-    },
-    'echo "Tests completed"'
+    }
   ],
   fork: [
     'npm run watch:css',
@@ -109,8 +130,6 @@ await shellFlow({
 ```
 
 ### Output Capture
-
-Capture command output for processing:
 
 ```javascript
 const result = await shellFlow({
@@ -122,12 +141,12 @@ const result = await shellFlow({
   ]
 });
 
-console.log(result.greeting.stdout);
+console.log(result.greeting.stdout);  // Command's standard output
+console.log(result.greeting.stderr);  // Command's standard error
+console.log(result.greeting.code);    // Exit code
 ```
 
 ### Environment Variables
-
-Set environment variables globally or per command:
 
 ```javascript
 await shellFlow({
@@ -147,8 +166,6 @@ await shellFlow({
 
 ### Working Directory
 
-Specify working directory:
-
 ```javascript
 await shellFlow({
   commands: [
@@ -157,13 +174,11 @@ await shellFlow({
       wdir: './packages/app'
     }
   ],
-  wdir: '/project/root'
+  wdir: '/project/root'  // Global working directory
 });
 ```
 
 ### Script Mode
-
-Use shell script features:
 
 ```javascript
 await shellFlow({
@@ -181,14 +196,102 @@ await shellFlow({
 });
 ```
 
-## Error Handling
+## Template Variables
 
-Handle command failures:
+The library supports template variable substitution using context objects. Templates use the `{{variable}}` syntax with several features:
+
+```javascript
+await shellFlow({
+  commands: [
+    'echo "Hello {{user.name}}"',
+    'mkdir -p {{paths.output}}'
+  ],
+  context: {
+    user: {
+      name: 'John'
+    },
+    paths: {
+      output: './dist'
+    }
+  }
+});
+```
+
+#### Template Features
+
+1. **Nested Object Access**
+```javascript
+await shellFlow({
+  commands: ['npm config set registry {{config.npm.registry}}'],
+  context: {
+    config: {
+      npm: {
+        registry: 'https://registry.npmjs.org'
+      }
+    }
+  }
+});
+```
+
+2. **Array Access**
+```javascript
+await shellFlow({
+  commands: ['deploy {{services[0].name}}'],
+  context: {
+    services: [
+      { name: 'api' },
+      { name: 'web' }
+    ]
+  }
+});
+```
+
+3. **Default Values**
+```javascript
+await shellFlow({
+  commands: [
+    'NODE_ENV={{env || production}}',
+    'PORT={{port || 3000}}'
+  ],
+  context: {
+    env: 'development'
+  }
+});
+```
+
+4. **Strict Mode**
+```javascript
+await shellFlow({
+  commands: [
+    // Will throw error if API_KEY is not in context
+    'curl -H "Authorization: {{! API_KEY}}" {{url}}'
+  ],
+  context: {
+    API_KEY: process.env.API_KEY,
+    url: 'https://api.example.com'
+  }
+});
+```
+
+5. **Conditional Values**
+```javascript
+await shellFlow({
+  commands: [
+    'npm run {{isProd ? build:prod}}'
+  ],
+  context: {
+    isProd: true
+  }
+});
+```
+
+## Error Handling
 
 ```javascript
 try {
   await shellFlow({
-    commands: ['invalid-command']
+    commands: ['invalid-command'],
+    onError: 'throw'  // 'stop' | 'continue' | 'log' | 'throw'
   });
 } catch (error) {
   console.log(error.message);    // Error description
