@@ -136,6 +136,15 @@ function processTemplates(input, context) {
 }
 
 /**
+ * @typedef {Object} RetryConfig
+ * @property {number} [attempts=3] - Maximum number of retry attempts
+ * @property {number} [delay=1000] - Initial delay between retries in milliseconds
+ * @property {number} [factor=2] - Exponential backoff factor
+ * @property {number} [maxDelay=30000] - Maximum delay between retries in milliseconds
+ * @property {number[]} [codes=[1]] - Exit codes to retry on
+ */
+
+/**
  * @typedef {Object} CommandGroup
  * @property {string[]} [steps] - Array of sequential commands
  * @property {string[]} [parallel] - Array of parallel commands
@@ -145,6 +154,7 @@ function processTemplates(input, context) {
  * @property {string} [wdir] - Working directory for the commands
  * @property {string} [captureName] - Name to capture command output
  * @property {boolean} [useScript=false] - Whether to execute commands in a script file
+ * @property {boolean|RetryConfig} [retry=false] - Retry configuration
  */
 
 /**
@@ -156,6 +166,7 @@ function processTemplates(input, context) {
  * @property {Object} [env] - Global environment variables
  * @property {string} [wdir=process.cwd()] - Global working directory
  * @property {Object} [context] - Template context object
+ * @property {boolean|RetryConfig} [retry=false] - Global retry configuration
  */
 
 /**
@@ -185,7 +196,8 @@ export default async function ({
   env,
   wdir,
   onError = "stop",
-  context = {}
+  context = {},
+  retry = false
 }) {
   wdir = wdir || process.cwd();
   // Process templates in all inputs
@@ -198,19 +210,32 @@ export default async function ({
   const processManager = new ProcessManager();
   const capture = {};
   const processPromises = [];
+  const globalRetryConfig = normalizeRetryConfig(retry);
 
   // Create a CommandRunner that holds processManager and provides methods
   const runner = {
     processManager,
-    async processCommands(commands, onError, env, wdir, captureName, captureRoot) {
+    async processCommands(commands, onError, env, wdir, captureName, captureRoot, retryConfig = globalRetryConfig) {
       const capture = captureName ? { items: [] } : undefined;
 
       for (const cmd of commands) {
         try {
           if (typeof cmd === 'string') {
-            await executeCommand(cmd, env, wdir, capture, processManager);
+            // Get the retry config for this command (use the parent's config)
+            const cmdRetryConfig = retryConfig;
+
+            if (cmdRetryConfig) {
+              await withRetry(
+                () => executeCommand(cmd, env, wdir, capture, processManager),
+                cmdRetryConfig
+              );
+            } else {
+              await executeCommand(cmd, env, wdir, capture, processManager);
+            }
           } else if (typeof cmd === 'object') {
             const keys = Object.keys(cmd);
+            // Get the command-specific retry config, falling back to parent config
+            const cmdRetryConfig = cmd.retry !== undefined ? normalizeRetryConfig(cmd.retry) : retryConfig;
 
             if ('exit' in cmd) {
               if (keys.length !== 1) {
@@ -240,15 +265,39 @@ export default async function ({
               }
               console.log(processTemplates(cmd.echo, context));
             } else if (cmd.steps) {
-              if (cmd.useScript) {
-                await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, processManager);
+              const executeSteps = async () => {
+                if (cmd.useScript) {
+                  await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+                } else {
+                  await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, cmdRetryConfig);
+                }
+              };
+
+              if (cmdRetryConfig) {
+                await withRetry(executeSteps, cmdRetryConfig);
               } else {
-                await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+                await executeSteps();
               }
             } else if (cmd.parallel) {
-              await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
+              const executeParallel = async () => {
+                await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig);
+              };
+
+              if (cmdRetryConfig) {
+                await withRetry(executeParallel, cmdRetryConfig);
+              } else {
+                await executeParallel();
+              }
             } else if (cmd.fork) {
-              await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
+              const executeFork = async () => {
+                await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig);
+              };
+
+              if (cmdRetryConfig) {
+                await withRetry(executeFork, cmdRetryConfig);
+              } else {
+                await executeFork();
+              }
             }
           }
         } catch (error) {
@@ -273,9 +322,9 @@ export default async function ({
       }
     },
 
-    async handleParallel(parallelCommands, onError, env, wdir, captureRoot) {
+    async handleParallel(parallelCommands, onError, env, wdir, captureRoot, retryConfig) {
       const tasks = parallelCommands.map((cmd) =>
-        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig)
       );
       if (onError === 'stop') {
         await Promise.all(tasks);
@@ -284,13 +333,13 @@ export default async function ({
       }
     },
 
-    async handleFork(forkCommands, onError, env, wdir, captureRoot) {
+    async handleFork(forkCommands, onError, env, wdir, captureRoot, retryConfig) {
       // Handle both string and array inputs
       const commands = typeof forkCommands === 'string' ? [forkCommands] : forkCommands;
 
       // Don't await the promises, just start them and continue
       commands.forEach(cmd => {
-        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig)
           .catch(error => {
             console.error(`Fork error (log): ${error}`);
           });
@@ -302,14 +351,14 @@ export default async function ({
     if (processedCommands) {
       let temp = processedCommands;
       if (!Array.isArray(processedCommands)) temp = [processedCommands];
-      processPromises.push(runner.processCommands(temp, onError, processedEnv, processedWdir, undefined, capture));
+      processPromises.push(runner.processCommands(temp, onError, processedEnv, processedWdir, undefined, capture, globalRetryConfig));
     }
     else if (processedParallel) {
-      processPromises.push(runner.handleParallel(processedParallel, onError, processedEnv, processedWdir, capture));
+      processPromises.push(runner.handleParallel(processedParallel, onError, processedEnv, processedWdir, capture, globalRetryConfig));
     }
     else if (processedFork) {
       processPromises.push(...processedFork.map(cmd =>
-        runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture)
+        runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture, globalRetryConfig)
           .catch(error => {
             console.error(`Fork error (log): ${error.message}`);
             if (onError === 'throw') throw error;
@@ -382,9 +431,11 @@ async function executeCommand(command, env, wdir, captureParent, processManager)
  * @param {Array} steps - Array of shell commands or nested command groups to execute sequentially.
  * @param {Object} env - Environment variables for the commands.
  * @param {string} wdir - Working directory for the commands.
+ * @param {string} [captureName] - Name to capture command output.
+ * @param {Object} captureRoot - Root object to store captured output.
  * @returns {Promise<void>} Resolves when all commands complete.
  */
-async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot, processManager) {
+async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot) {
   const { nanoid } = await import('nanoid');
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
   const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
@@ -428,7 +479,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
       scriptContent += forkCommands.join(' ') + (isWindows ? '' : '\n');
     } else if (step.steps) {
       // Nested steps: Process them directly (not inside the script)
-      await runner.processCommands([step], "stop", env, cwd);
+      throw new Error('Nested steps are not supported in script mode. Use useScript: false for nested steps.');
     } else {
       throw new Error('Invalid command structure in steps.');
     }
@@ -489,6 +540,86 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
       console.error(`Failed to delete temp script: ${scriptPath}`, err)
     );
   }
+}
+
+/**
+ * Utility function to handle retries with exponential backoff
+ * @param {Function} fn - The function to retry
+ * @param {Object} options - Retry options
+ * @param {number} [options.attempts=3] - Maximum number of retry attempts
+ * @param {number} [options.delay=1000] - Initial delay between retries in milliseconds
+ * @param {number} [options.factor=2] - Exponential backoff factor
+ * @param {number} [options.maxDelay=30000] - Maximum delay between retries in milliseconds
+ * @param {number[]} [options.codes=[1]] - Exit codes to retry on
+ * @returns {Promise<any>} - Result of the function
+ */
+async function withRetry(fn, options = {}) {
+  const {
+    attempts = 3,
+    delay = 1000,
+    factor = 2,
+    maxDelay = 30000,
+    codes = [1]
+  } = options;
+
+  let lastError;
+  let currentDelay = delay;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      // Only retry if the error code is in the retry codes list
+      if (!codes.includes(error.code)) {
+        throw error;
+      }
+
+      // If this was the last attempt, throw the error
+      if (attempt === attempts) {
+        throw error;
+      }
+
+      console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
+
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, currentDelay));
+
+      // Calculate next delay with exponential backoff
+      currentDelay = Math.min(currentDelay * factor, maxDelay);
+    }
+  }
+
+  // This should never happen, but just in case
+  throw lastError;
+}
+
+/**
+ * Normalizes retry configuration
+ * @param {boolean|Object} retry - Retry configuration
+ * @returns {Object|false} - Normalized retry configuration or false if retry is disabled
+ */
+function normalizeRetryConfig(retry) {
+  if (retry === false) return false;
+
+  if (retry === true) {
+    return {
+      attempts: 3,
+      delay: 1000,
+      factor: 2,
+      maxDelay: 30000,
+      codes: [1]
+    };
+  }
+
+  return {
+    attempts: retry.attempts || 3,
+    delay: retry.delay || 1000,
+    factor: retry.factor || 2,
+    maxDelay: retry.maxDelay || 30000,
+    codes: retry.codes || [1]
+  };
 }
 
 class ShellError extends Error {
