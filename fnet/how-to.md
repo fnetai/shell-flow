@@ -285,6 +285,99 @@ await shellFlow({
 });
 ```
 
+## Control Commands
+
+The library provides built-in control commands for common operations:
+
+### Echo Command
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: "Starting process..." },
+    { echo: "User: {{user.name}}" }
+  ],
+  context: {
+    user: { name: "John" }
+  }
+});
+```
+
+### Sleep Command
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: "Starting..." },
+    { sleep: 2 },  // Wait for 2 seconds
+    { sleep: "{{delay}}" }  // Dynamic delay from context
+  ],
+  context: {
+    delay: 1
+  }
+});
+```
+
+### Exit Command
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: "Running tests..." },
+    "npm test",
+    { exit: "{{testsPassed ? 0 : 1}}" }  // Dynamic exit code
+  ],
+  context: {
+    testsPassed: true
+  }
+});
+```
+
+Control commands must contain only their respective key (`echo`, `sleep`, or `exit`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
+
+## Exit Control
+
+The library supports controlled process termination using the `exit` command. The exit code can be specified directly or using template variables:
+
+```javascript
+// Simple exit
+await shellFlow({
+  commands: [
+    'echo "Done"',
+    { exit: 0 }  // Success exit
+  ]
+});
+
+// Using template variables
+await shellFlow({
+  commands: [
+    'npm run test',
+    { exit: '{{testResult.code || 0}}' }
+  ],
+  context: {
+    testResult: { code: 1 }
+  }
+});
+
+// With conditional logic
+await shellFlow({
+  commands: [
+    { parallel: ['server', 'watch'] },
+    'run-tests',
+    { exit: '{{isCI && testsFailed ? 1 : 0}}' }
+  ],
+  context: {
+    isCI: true,
+    testsFailed: false
+  }
+});
+```
+
+The exit command will:
+1. Gracefully terminate all running processes
+2. Wait for processes to clean up (with 5s timeout)
+3. Exit with the specified code (0-127)
+
 ## Error Handling
 
 ```javascript

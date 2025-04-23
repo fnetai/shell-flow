@@ -175,16 +175,45 @@ export default async function ({
         try {
           if (typeof cmd === 'string') {
             await executeCommand(cmd, env, wdir, capture, processManager);
-          } else if (cmd.steps) {
-            if (cmd.useScript) {
-              await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, processManager);
-            } else {
-              await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+          } else if (typeof cmd === 'object') {
+            const keys = Object.keys(cmd);
+            
+            if ('exit' in cmd) {
+              if (keys.length !== 1) {
+                throw new Error('Exit command object must contain only the "exit" key');
+              }
+              const exitCode = Number(processTemplates(cmd.exit, context));
+              if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 127) {
+                process.exit(exitCode);
+              } else {
+                throw new Error(`Invalid exit code: ${exitCode}. Must be integer between 0 and 127.`);
+              }
+            } else if ('sleep' in cmd) {
+              if (keys.length !== 1) {
+                throw new Error('Sleep command object must contain only the "sleep" key');
+              }
+              const seconds = Number(processTemplates(cmd.sleep, context));
+              if (Number.isFinite(seconds) && seconds >= 0) {
+                await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+              } else {
+                throw new Error(`Invalid sleep duration: ${seconds}. Must be a non-negative number.`);
+              }
+            } else if ('echo' in cmd) {
+              if (keys.length !== 1) {
+                throw new Error('Echo command object must contain only the "echo" key');
+              }
+              console.log(processTemplates(cmd.echo, context));
+            } else if (cmd.steps) {
+              if (cmd.useScript) {
+                await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, processManager);
+              } else {
+                await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+              }
+            } else if (cmd.parallel) {
+              await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
+            } else if (cmd.fork) {
+              await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
             }
-          } else if (cmd.parallel) {
-            await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
-          } else if (cmd.fork) {
-            await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot);
           }
         } catch (error) {
           console.error(`Error occurred: ${error.message}`);

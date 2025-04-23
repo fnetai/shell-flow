@@ -112,6 +112,21 @@ Development:
 4. [x] Phase 2: Array access support
 5. [x] Phase 2: Strict mode with error throwing
 
+### Control Commands
+
+Features:
+
+- [x] Built-in control commands:
+  - [x] echo - Output messages
+  - [x] sleep - Add delays
+  - [x] exit - Control process termination
+
+Development:
+
+1. [x] Phase 1: Basic echo command
+2. [x] Phase 1: Sleep command with delays
+3. [x] Phase 1: Exit command with codes
+
 ## Success Criteria
 
 We'll know we've succeeded when:
