@@ -8,21 +8,29 @@ class ProcessManager {
   #cleanup;
 
   constructor() {
+
     this.#cleanup = () => {
+
+      process.removeAllListeners();
+
       for (const proc of this.#processes) {
-        try {
-          proc.kill();
+        try {          
+          proc.removeAllListeners();
+          // console.log(`Killing process: ${proc.pid}`);
+          process.kill(-proc.pid, 'SIGKILL');
         } catch (err) {
           console.error(`Failed to kill process: ${err}`);
         }
       }
+
+      this.#processes.clear();
     };
 
     process.once('SIGINT', this.#cleanup);
     process.once('SIGTERM', this.#cleanup);
     process.once('exit', this.#cleanup);
   }
-
+  
   track(process) {
     this.#processes.add(process);
     process.once('exit', () => {
@@ -39,7 +47,7 @@ class ProcessManager {
     process.off('exit', this.#cleanup);
   }
 
-  async terminateAll(timeout = 5000) {
+  async terminateAll(timeout = 1000) {
     const processes = Array.from(this.#processes);
     if (processes.length === 0) return;
 
@@ -48,29 +56,16 @@ class ProcessManager {
     // Send SIGTERM to all processes
     for (const proc of processes) {
       try {
-        proc.kill('SIGTERM');
+        proc.removeAllListeners();
+        process.kill(-proc.pid, 'SIGKILL');
       } catch (err) {
-        console.error(`Failed to send SIGTERM to process: ${err}`);
+        console.error(`Failed to send SIGKILL to process: ${err}`);
       }
     }
 
-    // Wait for processes to exit (with timeout)
-    const startTime = Date.now();
-    while (this.#processes.size > 0 && (Date.now() - startTime) < timeout) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    this.#processes.clear();
 
-    // Force kill any remaining processes
-    if (this.#processes.size > 0) {
-      console.warn(`${this.#processes.size} processes did not exit gracefully, forcing termination`);
-      for (const proc of Array.from(this.#processes)) {
-        try {
-          proc.kill('SIGKILL');
-        } catch (err) {
-          console.error(`Failed to force kill process: ${err}`);
-        }
-      }
-    }
+    await new Promise(resolve => setTimeout(resolve, timeout));
   }
 }
 
@@ -244,7 +239,7 @@ export default async function ({
               const exitCode = Number(processTemplates(cmd.exit, context));
               if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 127) {
                 // Gracefully terminate all processes before exiting
-                await processManager.terminateAll(5000);
+                await processManager.terminateAll();
                 process.exit(exitCode);
               } else {
                 throw new Error(`Invalid exit code: ${exitCode}. Must be integer between 0 and 127.`);
@@ -387,7 +382,8 @@ async function executeCommand(command, env, wdir, captureParent, processManager)
       shell: true,
       stdio: captureParent ? 'pipe' : 'inherit',
       env: env ? { ...process.env, ...env } : process.env,
-      cwd: wdir ? path.resolve(wdir) : process.cwd()
+      cwd: wdir ? path.resolve(wdir) : process.cwd(),
+      detached: true,
     });
 
     processManager.track(pcs);
@@ -501,6 +497,7 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
         stdio: captureName ? 'pipe' : 'inherit',
         env: env ? { ...process.env, ...env } : process.env,
         cwd,
+        detached: true,
       });
 
       let capture;
