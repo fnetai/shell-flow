@@ -1,34 +1,41 @@
 import { spawn } from 'node:child_process';
+import treeKill from 'tree-kill';
+import { promisify } from 'node:util';
 import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+const treeKillAsync = promisify(treeKill);
 
 class ProcessManager {
   #processes = new Set();
   #cleanup;
 
   constructor() {
+    this.#cleanup = async () => {
+      process.off('SIGINT', this.#cleanup);
+      process.off('SIGTERM', this.#cleanup);
+      process.off('exit', this.#cleanup);
 
-    this.#cleanup = () => {
+      const killPromises = Array.from(this.#processes).map(proc => {
+        proc.removeAllListeners();
+        return treeKillAsync(proc.pid, 'SIGKILL');
+      });
 
-      process.removeAllListeners();
-
-      for (const proc of this.#processes) {
-        try {          
-          proc.removeAllListeners();
-          // console.log(`Killing process: ${proc.pid}`);
-          process.kill(-proc.pid, 'SIGKILL');
-        } catch (err) {
-          console.error(`Failed to kill process: ${err}`);
-        }
+      try {
+        await Promise.all(killPromises);
+      } catch (err) {
+        // Some processes might already be gone
       }
-
+      
       this.#processes.clear();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      process.exit(0);
     };
 
-    process.once('SIGINT', this.#cleanup);
-    process.once('SIGTERM', this.#cleanup);
-    process.once('exit', this.#cleanup);
+    process.on('SIGINT', this.#cleanup);
+    process.on('SIGTERM', this.#cleanup);
+    process.on('exit', this.#cleanup);
   }
   
   track(process) {
@@ -47,25 +54,23 @@ class ProcessManager {
     process.off('exit', this.#cleanup);
   }
 
-  async terminateAll(timeout = 1000) {
+  async terminateAll(timeout = 500) { // 500ms timeout
     const processes = Array.from(this.#processes);
     if (processes.length === 0) return;
 
-    console.log(`Terminating ${processes.length} background processes...`);
+    const killPromises = processes.map(proc => {
+      proc.removeAllListeners();
+      return treeKillAsync(proc.pid, 'SIGKILL');
+    });
 
-    // Send SIGTERM to all processes
-    for (const proc of processes) {
-      try {
-        proc.removeAllListeners();
-        process.kill(-proc.pid, 'SIGKILL');
-      } catch (err) {
-        console.error(`Failed to send SIGKILL to process: ${err}`);
-      }
+    try {
+      await Promise.all(killPromises);
+    } catch (err) {
+      // Some processes might already be gone
     }
 
-    this.#processes.clear();
-
     await new Promise(resolve => setTimeout(resolve, timeout));
+    this.#processes.clear();
   }
 }
 
@@ -383,7 +388,7 @@ async function executeCommand(command, env, wdir, captureParent, processManager)
       stdio: captureParent ? 'pipe' : 'inherit',
       env: env ? { ...process.env, ...env } : process.env,
       cwd: wdir ? path.resolve(wdir) : process.cwd(),
-      detached: true,
+      detached: true  // Ensure process runs in a new group
     });
 
     processManager.track(pcs);
