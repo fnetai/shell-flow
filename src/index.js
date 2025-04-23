@@ -38,6 +38,40 @@ class ProcessManager {
     process.off('SIGTERM', this.#cleanup);
     process.off('exit', this.#cleanup);
   }
+
+  async terminateAll(timeout = 5000) {
+    const processes = Array.from(this.#processes);
+    if (processes.length === 0) return;
+
+    console.log(`Terminating ${processes.length} background processes...`);
+
+    // Send SIGTERM to all processes
+    for (const proc of processes) {
+      try {
+        proc.kill('SIGTERM');
+      } catch (err) {
+        console.error(`Failed to send SIGTERM to process: ${err}`);
+      }
+    }
+
+    // Wait for processes to exit (with timeout)
+    const startTime = Date.now();
+    while (this.#processes.size > 0 && (Date.now() - startTime) < timeout) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Force kill any remaining processes
+    if (this.#processes.size > 0) {
+      console.warn(`${this.#processes.size} processes did not exit gracefully, forcing termination`);
+      for (const proc of Array.from(this.#processes)) {
+        try {
+          proc.kill('SIGKILL');
+        } catch (err) {
+          console.error(`Failed to force kill process: ${err}`);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -177,13 +211,15 @@ export default async function ({
             await executeCommand(cmd, env, wdir, capture, processManager);
           } else if (typeof cmd === 'object') {
             const keys = Object.keys(cmd);
-            
+
             if ('exit' in cmd) {
               if (keys.length !== 1) {
                 throw new Error('Exit command object must contain only the "exit" key');
               }
               const exitCode = Number(processTemplates(cmd.exit, context));
               if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 127) {
+                // Gracefully terminate all processes before exiting
+                await processManager.terminateAll(5000);
                 process.exit(exitCode);
               } else {
                 throw new Error(`Invalid exit code: ${exitCode}. Must be integer between 0 and 127.`);
@@ -251,7 +287,7 @@ export default async function ({
     async handleFork(forkCommands, onError, env, wdir, captureRoot) {
       // Handle both string and array inputs
       const commands = typeof forkCommands === 'string' ? [forkCommands] : forkCommands;
-      
+
       // Don't await the promises, just start them and continue
       commands.forEach(cmd => {
         this.processCommands([cmd], onError, env, wdir, undefined, captureRoot)

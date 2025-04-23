@@ -56,6 +56,28 @@ properties:
               type: string
             captureName:
               type: string
+            retry:
+              oneOf:
+                - type: boolean
+                - type: object
+                  properties:
+                    attempts:
+                      type: integer
+                      minimum: 1
+                    delay:
+                      type: integer
+                      minimum: 0
+                    factor:
+                      type: number
+                      minimum: 1
+                    maxDelay:
+                      type: integer
+                      minimum: 0
+                    codes:
+                      type: array
+                      items:
+                        type: integer
+                  additionalProperties: false
           oneOf:
             - required: ["echo"]
             - required: ["sleep"]
@@ -63,7 +85,7 @@ properties:
             - required: ["steps"]
             - required: ["parallel"]
             - required: ["fork"]
-          additionalProperties: false
+          additionalProperties: true
   fork:
     description: Commands to execute in background
     type: array
@@ -94,6 +116,29 @@ properties:
     type: object
     additionalProperties: true
     description: Template context object for variable substitution
+  retry:
+    oneOf:
+      - type: boolean
+      - type: object
+        properties:
+          attempts:
+            type: integer
+            minimum: 1
+          delay:
+            type: integer
+            minimum: 0
+          factor:
+            type: number
+            minimum: 1
+          maxDelay:
+            type: integer
+            minimum: 0
+          codes:
+            type: array
+            items:
+              type: integer
+        additionalProperties: false
+    description: Global retry configuration
 
 oneOf:
   - required: ["commands"]
@@ -115,7 +160,7 @@ oneOf:
 $defs:
   commandGroup:
     type: object
-    additionalProperties: false
+    additionalProperties: true
     properties:
       steps:
         type: array
@@ -156,6 +201,29 @@ $defs:
       captureName:
         type: string
         description: Name to capture command output
+      retry:
+        oneOf:
+          - type: boolean
+          - type: object
+            properties:
+              attempts:
+                type: integer
+                minimum: 1
+              delay:
+                type: integer
+                minimum: 0
+              factor:
+                type: number
+                minimum: 1
+              maxDelay:
+                type: integer
+                minimum: 0
+              codes:
+                type: array
+                items:
+                  type: integer
+            additionalProperties: false
+        description: Retry configuration for this command group
     oneOf:
       - required: ["steps"]
       - required: ["parallel"]
