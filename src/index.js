@@ -25,7 +25,7 @@ class ProcessManager {
       // Remove signal handlers to prevent recursive calls
       this.removeSignalHandlers();
 
-      console.log(`Received ${signal || 'exit'} signal. Cleaning up processes...`);
+      // console.log(`Received ${signal || 'exit'} signal. Cleaning up processes...`);
 
       try {
         // Terminate all processes and wait for completion
@@ -39,14 +39,14 @@ class ProcessManager {
         if (signal) {
           // Set a timeout to force exit if the signal doesn't terminate the process
           setTimeout(() => {
-            console.log('Forcing exit after timeout...');
+            // console.log('Forcing exit after timeout...');
             process.exit(signal === 'SIGINT' ? 130 : 143); // 130 for SIGINT, 143 for SIGTERM
           }, 500);
 
           process.kill(process.pid, signal);
         }
       } catch (error) {
-        console.error('Error during cleanup:', error);
+        // console.error('Error during cleanup:', error);
         // Force exit in case of error
         process.exit(1);
       }
@@ -56,13 +56,13 @@ class ProcessManager {
     this.addSignalHandlers();
 
     // Handle uncaught exceptions and unhandled promise rejections
-    process.on('uncaughtException', async (err) => {
-      console.error('Uncaught exception:', err);
+    process.on('uncaughtException', async (_err) => {
+      // console.error('Uncaught exception:', _err);
       await this.#cleanup('SIGTERM');
     });
 
-    process.on('unhandledRejection', async (reason) => {
-      console.error('Unhandled promise rejection:', reason);
+    process.on('unhandledRejection', async (_reason) => {
+      // console.error('Unhandled promise rejection:', _reason);
       await this.#cleanup('SIGTERM');
     });
   }
@@ -101,7 +101,7 @@ class ProcessManager {
     const processes = Array.from(this.#processes);
     if (processes.length === 0) return;
 
-    console.log(`Terminating ${processes.length} process(es)...`);
+    // console.log(`Terminating ${processes.length} process(es)...`);
 
     // First try SIGTERM for graceful shutdown
     const termPromises = processes.map(proc => {
@@ -123,7 +123,7 @@ class ProcessManager {
     // Check if any processes are still running and use SIGKILL as a last resort
     const remainingProcesses = Array.from(this.#processes);
     if (remainingProcesses.length > 0) {
-      console.log(`Forcefully killing ${remainingProcesses.length} remaining process(es)...`);
+      // console.log(`Forcefully killing ${remainingProcesses.length} remaining process(es)...`);
 
       const killPromises = remainingProcesses.map(proc => {
         return treeKillAsync(proc.pid, 'SIGKILL').catch(() => {
@@ -314,7 +314,7 @@ export default async function ({
               const exitCode = Number(processTemplates(cmd.exit, context));
               if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 127) {
                 // Gracefully terminate all processes before exiting
-                console.log(`Exiting with code ${exitCode}...`);
+                // console.log(`Exiting with code ${exitCode}...`);
 
                 // Set the exit code first
                 process.exitCode = exitCode;
@@ -344,7 +344,7 @@ export default async function ({
               if (keys.length !== 1) {
                 throw new Error('Echo command object must contain only the "echo" key');
               }
-              console.log(processTemplates(cmd.echo, context));
+              // console.log(processTemplates(cmd.echo, context));
             } else if (cmd.steps) {
               const executeSteps = async () => {
                 if (cmd.useScript) {
@@ -382,7 +382,7 @@ export default async function ({
             }
           }
         } catch (error) {
-          console.error(`Error occurred: ${error.message}`);
+          // console.error(`Error occurred: ${error.message}`);
 
           const lastError = { message: error.message, command: error.command, code: error.code, onError };
           captureRoot.error = lastError;
@@ -421,8 +421,8 @@ export default async function ({
       // Don't await the promises, just start them and continue
       commands.forEach(cmd => {
         this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig)
-          .catch(error => {
-            console.error(`Fork error (log): ${error}`);
+          .catch(_error => {
+            // console.error(`Fork error (log): ${_error}`);
           });
       });
     }
@@ -441,7 +441,7 @@ export default async function ({
       processPromises.push(...processedFork.map(cmd =>
         runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture, globalRetryConfig)
           .catch(error => {
-            console.error(`Fork error (log): ${error.message}`);
+            // console.error(`Fork error (log): ${error.message}`);
             if (onError === 'throw') throw error;
           })
       ));
@@ -451,7 +451,7 @@ export default async function ({
     return Object.keys(capture).length ? capture : undefined;
   } catch (error) {
     // Make sure to terminate all processes even if an error occurs
-    console.error(`Error in shell-flow execution: ${error.message}`);
+    // console.error(`Error in shell-flow execution: ${error.message}`);
     await processManager.terminateAll(1000);
     throw error;
   } finally {
@@ -635,8 +635,9 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
     });
   } finally {
     // Clean up the temporary file
-    await unlink(scriptPath).catch((err) =>
-      console.error(`Failed to delete temp script: ${scriptPath}`, err)
+    await unlink(scriptPath).catch((_err) =>
+      // console.error(`Failed to delete temp script: ${scriptPath}`, _err)
+      {}
     );
   }
 }
@@ -680,7 +681,7 @@ async function withRetry(fn, options = {}) {
         throw error;
       }
 
-      console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
+      // console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
 
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, currentDelay));
