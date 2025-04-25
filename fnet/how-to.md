@@ -21,6 +21,7 @@ yarn add @fnet/shell-flow
   steps?: string[];           // Array of sequential commands
   parallel?: string[];        // Array of parallel commands
   fork?: string[];           // Array of background commands
+  filemap?: object;          // Filemap configuration object
   onError?: "stop" | "continue" | "log" | "throw";  // Error handling policy
   env?: Record<string, any>;  // Environment variables
   wdir?: string;             // Working directory
@@ -333,7 +334,57 @@ await shellFlow({
 });
 ```
 
-Control commands must contain only their respective key (`echo`, `sleep`, or `exit`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
+### Filemap Command
+
+The `filemap` command allows you to map files from source directories to target directories with support for templating, symlinks, and multiple output formats.
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: "Starting file mapping..." },
+    { filemap: {
+        target: "dist",
+        sources: [
+          {
+            source: "templates",
+            target: ".",
+            symlink: false
+          },
+          {
+            source: "assets",
+            target: "assets",
+            symlink: true
+          }
+        ]
+      }
+    },
+    { echo: "File mapping completed" }
+  ],
+  context: {
+    app: {
+      name: "My App",
+      version: "1.0.0"
+    }
+  }
+});
+```
+
+#### Filemap Configuration
+
+The `filemap` command accepts an object with the following properties:
+
+- `target` (required): The target directory path where processed files will be placed.
+- `sources` (required): An array of source objects with the following properties:
+  - `source` (required): The source from which to fetch files, supports multiple protocols and providers.
+  - `target` (optional): Target subdirectory within the main target directory for output.
+  - `context` (optional): Context data to be used with the templating engine for dynamic content rendering.
+  - `engine` (optional): Template engine to use, defaults to 'njk' (Nunjucks).
+  - `symlink` (optional): Determines whether to create symbolic links instead of copying files (default: false).
+  - `provider` (optional): Custom provider configurations that can override defaults.
+- `output` (optional): Output format; options include 'file', 'stdout', or 'json' (default: 'file').
+- `provider` (optional): Default provider configurations for various source types.
+
+Control commands must contain only their respective key (`echo`, `sleep`, `exit`, or `filemap`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
 
 ## Exit Control
 
@@ -374,6 +425,7 @@ await shellFlow({
 ```
 
 The exit command will:
+
 1. Gracefully terminate all running processes
 2. Wait for processes to clean up (with 5s timeout)
 3. Exit with the specified code (0-127)

@@ -219,6 +219,7 @@ function processTemplates(input, context) {
  * @property {string[]} [steps] - Array of sequential commands
  * @property {string[]} [parallel] - Array of parallel commands
  * @property {string[]} [fork] - Array of background commands
+ * @property {string|Object} [filemap] - Filemap configuration (path to config file or inline config)
  * @property {string} [onError="stop"] - Error handling policy: "stop", "continue", "log", or "throw"
  * @property {Object} [env] - Environment variables for the commands
  * @property {string} [wdir] - Working directory for the commands
@@ -336,7 +337,9 @@ export default async function ({
               }
               const seconds = Number(processTemplates(cmd.sleep, context));
               if (Number.isFinite(seconds) && seconds >= 0) {
+                console.log(`Sleeping for ${seconds} seconds...`);
                 await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+                console.log(`Sleep completed.`);
               } else {
                 throw new Error(`Invalid sleep duration: ${seconds}. Must be a non-negative number.`);
               }
@@ -344,7 +347,10 @@ export default async function ({
               if (keys.length !== 1) {
                 throw new Error('Echo command object must contain only the "echo" key');
               }
-              // console.log(processTemplates(cmd.echo, context));
+              console.log(processTemplates(cmd.echo, context));
+            } else if ('filemap' in cmd) {
+              // Process the filemap command
+              await executeFilemap(cmd.filemap, env, wdir, context);
             } else if (cmd.steps) {
               const executeSteps = async () => {
                 if (cmd.useScript) {
@@ -636,8 +642,8 @@ async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot
   } finally {
     // Clean up the temporary file
     await unlink(scriptPath).catch((_err) =>
-      // console.error(`Failed to delete temp script: ${scriptPath}`, _err)
-      {}
+    // console.error(`Failed to delete temp script: ${scriptPath}`, _err)
+    { }
     );
   }
 }
@@ -681,7 +687,7 @@ async function withRetry(fn, options = {}) {
         throw error;
       }
 
-      // console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
+      console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
 
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, currentDelay));
@@ -740,5 +746,30 @@ class ShellError extends Error {
   }
   get name() {
     return this.#name;
+  }
+}
+
+/**
+ * Executes a filemap operation using the @fnet/filemap package
+ *
+ * @param {Object|string} config - Filemap configuration object or path to config file
+ * @param {Object} env - Environment variables for the command
+ * @param {string} wdir - Working directory for the command
+ * @param {Object} context - Template context object
+ * @returns {Promise<void>} Resolves when the filemap operation completes
+ */
+async function executeFilemap(config, _env, _wdir, context) {
+  try {
+    // Process any templates in the config
+    const processedConfig = processTemplates(config, context);
+
+    // Dynamically import the @fnet/filemap package
+    const { default: filemap } = await import('@fnet/filemap');
+
+    // Execute filemap with the processed config
+    await filemap(processedConfig);
+  } catch (error) {
+    console.error(`Filemap error: ${error.message}`);
+    throw new ShellError(`Filemap operation failed: ${error.message}`, 'filemap', 1);
   }
 }
