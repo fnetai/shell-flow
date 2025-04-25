@@ -24,6 +24,11 @@ properties:
                   maximum: 127
                 - type: string
               description: Exit code (0-127)
+            pause:
+              oneOf:
+                - type: string
+                - type: boolean
+              description: Message to display before pausing execution (press Enter to continue)
             filemap:
               $ref: "#/$defs/filemapConfig"
               description: Filemap configuration object
@@ -85,6 +90,7 @@ properties:
             - required: ["echo"]
             - required: ["sleep"]
             - required: ["exit"]
+            - required: ["pause"]
             - required: ["filemap"]
             - required: ["steps"]
             - required: ["parallel"]
@@ -237,6 +243,11 @@ $defs:
       filemap:
         $ref: "#/$defs/filemapConfig"
         description: Filemap configuration object
+      pause:
+        oneOf:
+          - type: string
+          - type: boolean
+        description: Message to display before pausing execution (press Enter to continue)
       env:
         type: object
         additionalProperties: true
@@ -283,6 +294,7 @@ $defs:
       - required: ["parallel"]
       - required: ["fork"]
       - required: ["filemap"]
+      - required: ["pause"]
 examples:
   - description: Sequential command execution with error handling
     value:
@@ -411,3 +423,14 @@ examples:
         app:
           name: "My App"
           version: "1.0.0"
+
+  - description: Pause command example
+    value:
+      commands:
+        - echo: "Starting background processes"
+        - fork:
+            - "npm run server"
+            - "npm run watch"
+        - echo: "Background processes started"
+        - pause: "Press Enter to terminate all processes and exit..."
+        - echo: "Cleaning up and exiting"

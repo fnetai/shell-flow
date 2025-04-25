@@ -384,7 +384,37 @@ The `filemap` command accepts an object with the following properties:
 - `output` (optional): Output format; options include 'file', 'stdout', or 'json' (default: 'file').
 - `provider` (optional): Default provider configurations for various source types.
 
-Control commands must contain only their respective key (`echo`, `sleep`, `exit`, or `filemap`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
+### Pause Command
+
+The `pause` command pauses execution and waits for the user to press Enter before continuing. This is particularly useful for interactive scripts or when running background processes that you want to keep running until manually terminated.
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: "Starting background processes..." },
+    { fork: [
+        "npm run server",
+        "npm run watch"
+      ]
+    },
+    { echo: "Background processes started" },
+    { pause: "Press Enter to terminate all processes and exit..." },
+    { echo: "Cleaning up and exiting" }
+  ]
+});
+```
+
+The `pause` command can be used in two ways:
+
+```javascript
+// With a custom message
+{ pause: "Press Enter to continue..." }
+
+// With a default message ("Press Enter to continue...")
+{ pause: true }
+```
+
+Control commands must contain only their respective key (`echo`, `sleep`, `exit`, `pause`, or `filemap`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
 
 ## Exit Control
 

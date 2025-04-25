@@ -351,6 +351,9 @@ export default async function ({
             } else if ('filemap' in cmd) {
               // Process the filemap command
               await executeFilemap(cmd.filemap, env, wdir, context);
+            } else if ('pause' in cmd) {
+              // Process the pause command
+              await executePause(cmd.pause, env, wdir, context);
             } else if (cmd.steps) {
               const executeSteps = async () => {
                 if (cmd.useScript) {
@@ -771,5 +774,47 @@ async function executeFilemap(config, _env, _wdir, context) {
   } catch (error) {
     console.error(`Filemap error: ${error.message}`);
     throw new ShellError(`Filemap operation failed: ${error.message}`, 'filemap', 1);
+  }
+}
+
+/**
+ * Pauses execution and waits for the user to press Enter
+ *
+ * @param {string} message - Message to display before pausing
+ * @param {Object} env - Environment variables for the command
+ * @param {string} wdir - Working directory for the command
+ * @param {Object} context - Template context object
+ * @returns {Promise<void>} Resolves when the user presses Enter
+ */
+async function executePause(message, _env, _wdir, context) {
+  try {
+    let displayMessage;
+
+    if (message === true) {
+      displayMessage = 'Press Enter to continue...';
+    } else {
+      // Process any templates in the message
+      displayMessage = processTemplates(message, context);
+    }
+
+    // Display the message
+    console.log(displayMessage || 'Press Enter to continue...');
+
+    // Create a readline interface
+    const readline = require('readline');
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    // Wait for user input
+    await new Promise(resolve => {
+      rl.question('', () => {
+        rl.close();
+        resolve();
+      });
+    });
+  } catch (error) {
+    throw new ShellError(`Pause operation failed: ${error.message}`, 'pause', 1);
   }
 }
