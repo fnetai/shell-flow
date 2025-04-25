@@ -337,9 +337,9 @@ export default async function ({
               }
               const seconds = Number(processTemplates(cmd.sleep, context));
               if (Number.isFinite(seconds) && seconds >= 0) {
-                console.log(`Sleeping for ${seconds} seconds...`);
+                // console.log(`Sleeping for ${seconds} seconds...`);
                 await new Promise(resolve => setTimeout(resolve, seconds * 1000));
-                console.log(`Sleep completed.`);
+                // console.log(`Sleep completed.`);
               } else {
                 throw new Error(`Invalid sleep duration: ${seconds}. Must be a non-negative number.`);
               }
@@ -687,7 +687,7 @@ async function withRetry(fn, options = {}) {
         throw error;
       }
 
-      console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
+      // console.log(`Command failed with code ${error.code}. Retrying (${attempt}/${attempts}) in ${currentDelay}ms...`);
 
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, currentDelay));
