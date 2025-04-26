@@ -335,19 +335,12 @@ export default async function ({
               if (keys.length !== 1) {
                 throw new Error('Sleep command object must contain only the "sleep" key');
               }
-              const seconds = Number(processTemplates(cmd.sleep, context));
-              if (Number.isFinite(seconds) && seconds >= 0) {
-                // console.log(`Sleeping for ${seconds} seconds...`);
-                await new Promise(resolve => setTimeout(resolve, seconds * 1000));
-                // console.log(`Sleep completed.`);
-              } else {
-                throw new Error(`Invalid sleep duration: ${seconds}. Must be a non-negative number.`);
-              }
+              await executeSleep(cmd.sleep, env, wdir, context);
             } else if ('echo' in cmd) {
               if (keys.length !== 1) {
                 throw new Error('Echo command object must contain only the "echo" key');
               }
-              console.log(processTemplates(cmd.echo, context));
+              await executeEcho(cmd.echo, env, wdir, context);
             } else if ('filemap' in cmd) {
               // Process the filemap command
               await executeFilemap(cmd.filemap, env, wdir, context);
@@ -753,6 +746,54 @@ class ShellError extends Error {
 }
 
 /**
+ * Executes a sleep command using the shell's sleep command
+ *
+ * @param {number|string} seconds - Number of seconds to sleep
+ * @param {Object} env - Environment variables for the command
+ * @param {string} wdir - Working directory for the command
+ * @param {Object} context - Template context object
+ * @returns {Promise<void>} Resolves when the sleep completes
+ */
+async function executeSleep(seconds, env, wdir, context) {
+  try {
+    // Process any templates in the seconds
+    const processedSeconds = Number(processTemplates(seconds, context));
+
+    if (Number.isFinite(processedSeconds) && processedSeconds >= 0) {
+      // Use the shell's sleep command
+      const command = `sleep ${processedSeconds}`;
+      await executeCommand(command, env, wdir, null, new ProcessManager());
+    } else {
+      throw new Error(`Invalid sleep duration: ${processedSeconds}. Must be a non-negative number.`);
+    }
+  } catch (error) {
+    throw new ShellError(`Sleep operation failed: ${error.message}`, 'sleep', 1);
+  }
+}
+
+/**
+ * Executes an echo command using the shell's echo command
+ *
+ * @param {string} message - Message to echo
+ * @param {Object} env - Environment variables for the command
+ * @param {string} wdir - Working directory for the command
+ * @param {Object} context - Template context object
+ * @returns {Promise<void>} Resolves when the echo completes
+ */
+async function executeEcho(message, env, wdir, context) {
+  try {
+    // Process any templates in the message
+    const processedMessage = processTemplates(message, context);
+
+    // Use the shell's echo command
+    const command = `echo "${processedMessage}"`;
+    await executeCommand(command, env, wdir, null, new ProcessManager());
+  } catch (error) {
+    throw new ShellError(`Echo operation failed: ${error.message}`, 'echo', 1);
+  }
+}
+
+/**
  * Executes a filemap operation using the @fnet/filemap package
  *
  * @param {Object|string} config - Filemap configuration object or path to config file
@@ -786,7 +827,7 @@ async function executeFilemap(config, _env, _wdir, context) {
  * @param {Object} context - Template context object
  * @returns {Promise<void>} Resolves when the user presses Enter
  */
-async function executePause(message, _env, _wdir, context) {
+async function executePause(message, env, wdir, context) {
   try {
     let displayMessage;
 
@@ -797,23 +838,11 @@ async function executePause(message, _env, _wdir, context) {
       displayMessage = processTemplates(message, context);
     }
 
-    // Display the message
-    console.log(displayMessage || 'Press Enter to continue...');
+    // Use a simple shell command to display the message and wait for Enter
+    const command = `echo "${displayMessage || 'Press Enter to continue...'}" && read`;
 
-    // Create a readline interface
-    const readline = require('readline');
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-
-    // Wait for user input
-    await new Promise(resolve => {
-      rl.question('', () => {
-        rl.close();
-        resolve();
-      });
-    });
+    // Execute the command
+    await executeCommand(command, env, wdir, null, new ProcessManager());
   } catch (error) {
     throw new ShellError(`Pause operation failed: ${error.message}`, 'pause', 1);
   }
