@@ -12,3 +12,9 @@ features:
     
   t::dev::s::cli.fargs.default: dev
   t::py::s::runtime.type: python
+
+commands:
+  node-deploy:
+    - fnode deploy --ftag nd
+  python-deploy:
+    - fnode deploy --ftag py
