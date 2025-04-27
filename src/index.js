@@ -802,10 +802,15 @@ async function executeEcho(message, env, wdir, context) {
  * @param {Object} context - Template context object
  * @returns {Promise<void>} Resolves when the filemap operation completes
  */
-async function executeFilemap(config, _env, _wdir, context) {
+async function executeFilemap(config, _env, wdir, context) {
   try {
     // Process any templates in the config
     const processedConfig = processTemplates(config, context);
+
+    // If wdir is provided and processedConfig doesn't have a wdir, add it
+    if (wdir && typeof processedConfig === 'object' && !processedConfig.wdir) {
+      processedConfig.wdir = wdir;
+    }
 
     // Dynamically import the @fnet/filemap package
     const { default: filemap } = await import('@fnet/filemap');

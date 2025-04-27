@@ -14,6 +14,9 @@ features:
   t::py::s::runtime.type: python
 
 commands:
+  dev:
+    - fnode build -ftag dev
+    - fnode cli
   node-deploy:
     - fnode deploy --ftag nd
   python-deploy:
