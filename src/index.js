@@ -195,11 +195,11 @@ function resolveTemplates(str, context) {
 function processTemplates(input, context) {
   if (!input) return input;
 
-  if (typeof input === 'string') return resolveTemplates(input, context || {});
-  if (Array.isArray(input)) return input.map(item => processTemplates(item, context));
+  if (typeof input === 'string') return resolveTemplates(input, context);
+  if (Array.isArray(input)) return input.map(item => processTemplates(item, input.context ? input.context : context));
   if (typeof input === 'object') {
     return Object.fromEntries(
-      Object.entries(input).map(([k, v]) => [k, processTemplates(v, context)])
+      Object.entries(input).map(([k, v]) => [k, processTemplates(v, input.context ? input.context : context)])
     );
   }
   return input;
