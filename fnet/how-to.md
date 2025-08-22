@@ -20,13 +20,20 @@ yarn add @fnet/shell-flow
 {
   steps?: string[];           // Array of sequential commands
   parallel?: string[];        // Array of parallel commands
-  fork?: string[];           // Array of background commands
-  filemap?: object;          // Filemap configuration object
+  fork?: string[];            // Array of background commands
+  filemap?: object;           // Filemap configuration object
   onError?: "stop" | "continue" | "log" | "throw";  // Error handling policy
   env?: Record<string, any>;  // Environment variables
-  wdir?: string;             // Working directory
-  captureName?: string;      // Name to capture output
-  useScript?: boolean;       // Whether to execute in script mode
+  wdir?: string;              // Working directory
+  captureName?: string;       // Name to capture output
+  useScript?: boolean;        // Whether to execute in script mode
+  retry?: boolean | {         // Optional retry config
+    attempts?: number;        // default 3
+    delay?: number;           // default 1000ms
+    factor?: number;          // default 2
+    maxDelay?: number;        // default 30000ms
+    codes?: number[];         // default [1]
+  };
 }
 ```
 
@@ -38,9 +45,16 @@ yarn add @fnet/shell-flow
   parallel?: (string | CommandGroup)[];  // Parallel commands
   fork?: (string | CommandGroup)[];      // Background commands
   onError?: "stop" | "continue" | "log" | "throw";  // Global error policy
-  env?: Record<string, any>;  // Global environment variables
-  wdir?: string;             // Global working directory (defaults to process.cwd())
-  context?: Record<string, any>;  // Template context object
+  env?: Record<string, any>;             // Global environment variables
+  wdir?: string;                         // Global working directory (defaults to process.cwd())
+  context?: Record<string, any>;         // Template context object
+  retry?: boolean | {                    // Optional global retry config
+    attempts?: number;
+    delay?: number;
+    factor?: number;
+    maxDelay?: number;
+    codes?: number[];
+  };
 }
 ```
 
@@ -132,19 +146,39 @@ await shellFlow({
 
 ### Output Capture
 
+Non-script steps capture produce an items array:
+
 ```javascript
 const result = await shellFlow({
   commands: [
     {
-      steps: ['echo "Hello World"'],
+      steps: ['echo "Hello World"', 'echo "Second"'],
       captureName: 'greeting'
     }
   ]
 });
 
-console.log(result.greeting.stdout);  // Command's standard output
-console.log(result.greeting.stderr);  // Command's standard error
-console.log(result.greeting.code);    // Exit code
+console.log(result.greeting.items[0].stdout);  // First command stdout
+console.log(result.greeting.items[0].stderr);  // First command stderr
+console.log(result.greeting.items[0].code);    // First command exit code
+```
+
+Script mode (useScript: true) produces a single capture object:
+
+```javascript
+const result = await shellFlow({
+  commands: [
+    {
+      steps: ['echo "Hello World"', 'echo "Second"'],
+      useScript: true,
+      captureName: 'greeting'
+    }
+  ]
+});
+
+console.log(result.greeting.stdout);  // Combined script stdout
+console.log(result.greeting.stderr);  // Combined script stderr
+console.log(result.greeting.code);    // Script exit code
 ```
 
 ### Environment Variables
@@ -218,9 +252,10 @@ await shellFlow({
 });
 ```
 
-#### Template Features
+### Template Features
 
 1. **Nested Object Access**
+
 ```javascript
 await shellFlow({
   commands: ['npm config set registry {{config.npm.registry}}'],
@@ -234,7 +269,8 @@ await shellFlow({
 });
 ```
 
-2. **Array Access**
+1. **Array Access**
+
 ```javascript
 await shellFlow({
   commands: ['deploy {{services[0].name}}'],
@@ -247,7 +283,8 @@ await shellFlow({
 });
 ```
 
-3. **Default Values**
+1. **Default Values**
+
 ```javascript
 await shellFlow({
   commands: [
@@ -260,12 +297,12 @@ await shellFlow({
 });
 ```
 
-4. **Strict Mode**
+1. **Strict Mode (use {{API_KEY!}})**
+
 ```javascript
 await shellFlow({
   commands: [
-    // Will throw error if API_KEY is not in context
-    'curl -H "Authorization: {{! API_KEY}}" {{url}}'
+    'curl -H "Authorization: {{API_KEY!}}" {{url}}'
   ],
   context: {
     API_KEY: process.env.API_KEY,
@@ -274,7 +311,8 @@ await shellFlow({
 });
 ```
 
-5. **Conditional Values**
+1. **Conditional Value (presence-based)**
+
 ```javascript
 await shellFlow({
   commands: [
@@ -371,7 +409,7 @@ await shellFlow({
 
 #### Filemap Configuration
 
-The `filemap` command accepts an object with the following properties:
+The `filemap` command accepts an object (not a file path string) with the following properties:
 
 - `target` (required): The target directory path where processed files will be placed.
 - `sources` (required): An array of source objects with the following properties:
@@ -398,7 +436,7 @@ await shellFlow({
       ]
     },
     { echo: "Background processes started" },
-    { pause: "Press Enter to terminate all processes and exit..." },
+    { pause: "Press Enter to continue..." },
     { echo: "Cleaning up and exiting" }
   ]
 });
@@ -474,6 +512,47 @@ try {
   console.log(error.code);       // Exit code
   console.log(error.onError);    // Active error policy
 }
+```
+
+### Error handling and retry examples
+
+- onError policies:
+  - stop: stop current sequence on first error in that scope
+  - continue: continue without logging
+  - log: continue; you can add your own logging around errors if desired
+  - throw: throw immediately
+
+- retry options (global or per group):
+  - attempts: number of tries (default 3)
+  - delay: initial delay in ms (default 1000)
+  - factor: backoff multiplier (default 2)
+  - maxDelay: cap on delay (default 30000)
+  - codes: exit codes to retry on (default [1])
+
+```javascript
+// Global retry, with per-group override
+await shellFlow({
+  onError: 'stop',
+  retry: { attempts: 3, delay: 1000, factor: 2, maxDelay: 30_000, codes: [1] },
+  commands: [
+    {
+      steps: [
+        'may-fail-once',
+        'then-run-next'
+      ]
+    },
+    {
+      // Override retry for this group only
+      steps: ['another-maybe-failing-command'],
+      retry: { attempts: 5, delay: 500 }
+    },
+    {
+      // Continue on error without throwing/logging
+      steps: ['bad-command'],
+      onError: 'continue'
+    }
+  ]
+});
 ```
 
 ## Best Practices

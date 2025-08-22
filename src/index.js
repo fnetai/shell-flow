@@ -52,33 +52,33 @@ class ProcessManager {
       }
     };
 
+    // Pre-bind handler references so we can cleanly remove them later
+    this._onSigint = () => this.#cleanup('SIGINT');
+    this._onSigterm = () => this.#cleanup('SIGTERM');
+    this._onUncaught = async (_err) => { await this.#cleanup('SIGTERM'); };
+    this._onUnhandled = async (_reason) => { await this.#cleanup('SIGTERM'); };
+
     // Add signal handlers
     this.addSignalHandlers();
 
     // Handle uncaught exceptions and unhandled promise rejections
-    process.on('uncaughtException', async (_err) => {
-      // console.error('Uncaught exception:', _err);
-      await this.#cleanup('SIGTERM');
-    });
-
-    process.on('unhandledRejection', async (_reason) => {
-      // console.error('Unhandled promise rejection:', _reason);
-      await this.#cleanup('SIGTERM');
-    });
+    process.on('uncaughtException', this._onUncaught);
+    process.on('unhandledRejection', this._onUnhandled);
   }
 
   addSignalHandlers() {
-    process.on('SIGINT', () => this.#cleanup('SIGINT'));
-    process.on('SIGTERM', () => this.#cleanup('SIGTERM'));
-    process.on('exit', this.#cleanup);
+    process.on('SIGINT', this._onSigint);
+    process.on('SIGTERM', this._onSigterm);
+    // Avoid async cleanup in 'exit' event; rely on finally and signals instead
+    // process.on('exit', this.#cleanup);
   }
 
   removeSignalHandlers() {
-    process.off('SIGINT', () => this.#cleanup('SIGINT'));
-    process.off('SIGTERM', () => this.#cleanup('SIGTERM'));
-    process.off('exit', this.#cleanup);
-    process.off('uncaughtException', () => this.#cleanup('SIGTERM'));
-    process.off('unhandledRejection', () => this.#cleanup('SIGTERM'));
+    process.off('SIGINT', this._onSigint);
+    process.off('SIGTERM', this._onSigterm);
+    // process.off('exit', this.#cleanup);
+    process.off('uncaughtException', this._onUncaught);
+    process.off('unhandledRejection', this._onUnhandled);
   }
 
   track(process) {
@@ -396,6 +396,7 @@ export default async function ({
 
           if (onError === "stop") break; // Stop execution if onError is "stop"
           else if (onError === "log") continue; // Log and continue if onError is "log"
+          else if (onError === 'continue') continue; // Explicit continue without logging
           else if (onError === 'throw') throw error;
         }
       }
@@ -785,8 +786,9 @@ async function executeEcho(message, env, wdir, context) {
     // Process any templates in the message
     const processedMessage = processTemplates(message, context);
 
-    // Use the shell's echo command
-    const command = `echo "${processedMessage}"`;
+    // Use the shell's echo command with basic escaping
+    const safeMessage = String(processedMessage).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const command = `echo "${safeMessage}"`;
     await executeCommand(command, env, wdir, null, new ProcessManager());
   } catch (error) {
     throw new ShellError(`Echo operation failed: ${error.message}`, 'echo', 1);
@@ -807,8 +809,13 @@ async function executeFilemap(config, _env, wdir, context) {
     // Process any templates in the config
     const processedConfig = processTemplates(config, context);
 
+    // Validate: filemap accepts only object configuration
+    if (processedConfig === null || typeof processedConfig !== 'object') {
+      throw new Error('Filemap config must be an object with { target, sources, ... }');
+    }
+
     // If wdir is provided and processedConfig doesn't have a wdir, add it
-    if (wdir && typeof processedConfig === 'object' && !processedConfig.wdir) {
+    if (wdir && !processedConfig.wdir) {
       processedConfig.wdir = wdir;
     }
 
@@ -844,10 +851,23 @@ async function executePause(message, env, wdir, context) {
     }
 
     // Use a simple shell command to display the message and wait for Enter
-    const command = `echo "${displayMessage || 'Press Enter to continue...'}" && read`;
+    const msg = displayMessage || 'Press Enter to continue...';
+    const safeMsg = String(msg).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const command = `echo "${safeMsg}" && read`;
 
-    // Execute the command
-    await executeCommand(command, env, wdir, null, new ProcessManager());
+    // Execute the command with a fallback to Node readline in non-interactive shells
+    try {
+      await executeCommand(command, env, wdir, null, new ProcessManager());
+    } catch (_err) {
+      const rlModule = await import('node:readline');
+      const rl = rlModule.createInterface({ input: process.stdin, output: process.stdout });
+      await new Promise(resolve => {
+        rl.question(`${msg}\n`, () => {
+          rl.close();
+          resolve();
+        });
+      });
+    }
   } catch (error) {
     throw new ShellError(`Pause operation failed: ${error.message}`, 'pause', 1);
   }
