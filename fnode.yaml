@@ -9,9 +9,10 @@ input: g::file://fnet/input.yaml
 features:
   dts: true
   app: false
+  cli: false
     
-  t::dev::s::cli.fargs.default: dev
-  t::py::s::runtime.type: python
+  # t::dev::s::cli.fargs.default: dev
+  # t::py::s::runtime.type: python
 
 commands:
   dev:
