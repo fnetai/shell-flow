@@ -1,0 +1,14 @@
+# Test: Error Handling - Continue with Capture
+# Category: Error Handling
+# Level: Medium
+# Description: Continue execution and capture errors
+
+commands:
+  - echo: "Test: Error handling with onError: continue + capture"
+  - steps:
+      - "echo 'Command before error'"
+      - "invalid_command"
+      - "echo 'This should execute despite the error'"
+    captureName: "error_test"
+    onError: "continue"
+

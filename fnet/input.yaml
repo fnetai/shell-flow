@@ -56,7 +56,7 @@ properties:
                       - $ref: "#/$defs/commandGroup"
             onError:
               type: string
-              enum: ["stop", "continue", "log", "throw"]
+              enum: ["stop", "continue", "throw"]
             env:
               type: object
               additionalProperties: true
@@ -113,8 +113,12 @@ properties:
   onError:
     type: string
     default: "stop"
-    enum: ["stop", "continue", "log", "throw"]
-    description: Global error handling policy
+    enum: ["stop", "continue", "throw"]
+    description: |
+      Global error handling policy:
+      - "stop": Stop execution on error and set exit code (default)
+      - "continue": Collect errors but continue execution, exit code remains 0
+      - "throw": Throw exception for parent to handle
   env:
     type: object
     additionalProperties: true
@@ -257,8 +261,12 @@ $defs:
         description: Working directory for the command group
       onError:
         type: string
-        enum: ["stop", "continue", "log", "throw"]
-        description: Error handling policy for this command group
+        enum: ["stop", "continue", "throw"]
+        description: |
+          Error handling policy for this command group:
+          - "stop": Stop execution on error and set exit code
+          - "continue": Collect errors but continue execution, exit code remains 0
+          - "throw": Throw exception for parent to handle
       useScript:
         type: boolean
         default: false

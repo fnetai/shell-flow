@@ -196,8 +196,7 @@ export default async function ({
             }
           }
         } catch (error) {
-          // console.error(`Error occurred: ${error.message}`);
-
+          // Collect error information
           const lastError = { message: error.message, command: error.command, code: error.code, onError };
           captureRoot.error = lastError;
           captureRoot.errors = captureRoot.errors || [];
@@ -206,10 +205,22 @@ export default async function ({
           // TODO: Add a custom formatter and more options for errors
           captureRoot.errors.format = captureRoot.errors.format || (() => JSON.stringify(captureRoot.errors, null, 2));
 
-          if (onError === "stop") break; // Stop execution if onError is "stop"
-          else if (onError === "log") continue; // Log and continue if onError is "log"
-          else if (onError === 'continue') continue; // Explicit continue without logging
-          else if (onError === 'throw') throw error;
+          // Handle error based on policy
+          if (onError === "stop") {
+            // Set exit code and stop execution
+            if (!process.exitCode) {
+              process.exitCode = error.code || 1;
+            }
+            break;
+          }
+          else if (onError === 'continue') {
+            // Continue without setting exit code ("I don't care")
+            continue;
+          }
+          else if (onError === 'throw') {
+            // Re-throw for parent to handle
+            throw error;
+          }
         }
       }
 

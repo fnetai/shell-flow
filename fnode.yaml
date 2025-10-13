@@ -8,7 +8,7 @@ s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 t::nd::input: g::file://fnet/input.yaml
 
 features:
-  s::runtime.type: bun
+  t::dev::s::runtime.type: bun
   t::nd::s::runtime.type: node
   t::py::s::runtime.type: python
 
@@ -20,7 +20,7 @@ features:
 commands:
   dev:
     - fnode build -ftag dev
-    - fnode cli
+    - fnode cli:dev
 
   node-deploy:
     - fnode deploy --ftag nd
@@ -50,7 +50,7 @@ commands:
   test-error:
     - fnode cli --config error-01-stop
     - fnode cli --config error-02-continue
-    - fnode cli --config error-03-log
+    - fnode cli --config error-03-continue-capture
 
   test-retry:
     - fnode cli --config retry-01-simple
