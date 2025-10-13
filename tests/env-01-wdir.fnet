@@ -1,0 +1,13 @@
+# Test: Working Directory
+# Category: Environment
+# Level: Simple
+# Description: Working directory changes
+
+commands:
+  - echo: "Test: Working directory"
+  - "pwd"
+  - steps:
+      - "pwd"
+    wdir: "/tmp"
+  - "pwd"
+

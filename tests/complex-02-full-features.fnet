@@ -1,0 +1,36 @@
+# Test: Full Feature Showcase
+# Category: Complex
+# Level: Complex
+# Description: Comprehensive test using multiple features
+
+commands:
+  - echo: "Test: Full feature showcase"
+  - echo: "User: {{user.name}}, Environment: {{env}}"
+  - parallel:
+      - steps:
+          - "echo 'Task 1 starting'"
+          - "sleep 1"
+          - "echo 'Task 1 completed'"
+        env:
+          TASK_ID: "1"
+      - steps:
+          - "echo 'Task 2 starting'"
+          - "sleep 2"
+          - "echo 'Task 2 completed'"
+        env:
+          TASK_ID: "2"
+        retry:
+          attempts: 2
+          delay: 500
+    onError: "continue"
+  - fork:
+      - "sleep 3 && echo 'Background monitoring'"
+  - echo: "All tasks completed successfully"
+  - sleep: 4
+context:
+  user:
+    name: "Test User"
+  env: "testing"
+env:
+  GLOBAL_ENV: "production"
+

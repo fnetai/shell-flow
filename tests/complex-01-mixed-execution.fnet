@@ -1,0 +1,22 @@
+# Test: Mixed Execution Modes
+# Category: Complex
+# Level: Complex
+# Description: Combination of sequential, parallel, and fork
+
+commands:
+  - echo: "Test: Mixed execution modes"
+  - "echo 'Starting complex workflow'"
+  - parallel:
+      - steps:
+          - "echo 'Parallel step 1'"
+          - "sleep 1"
+          - "echo 'Parallel step 1 done'"
+      - fork:
+          - "sleep 2 && echo 'Background task in parallel'"
+      - "echo 'Simple parallel task'"
+  - echo: "Parallel section completed"
+  - fork:
+      - "sleep 3 && echo 'Final background task'"
+  - echo: "Workflow completed"
+  - sleep: 4
+

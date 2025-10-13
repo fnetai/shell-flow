@@ -1,0 +1,18 @@
+# Test: Required Template Variables
+# Category: Template
+# Level: Simple
+# Description: Required template variable with strict mode
+
+commands:
+  - echo: "Test: Required template variables"
+  - "echo 'Required value: {{required!}}'"
+  - "echo 'User name: {{user.name!}}'"
+  - "echo 'Config port: {{config.port!}}'"
+  - echo: "All required variables resolved successfully"
+context:
+  required: "Required Value"
+  user:
+    name: "John Doe"
+  config:
+    port: 3000
+

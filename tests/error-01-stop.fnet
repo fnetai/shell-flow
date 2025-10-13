@@ -1,0 +1,11 @@
+# Test: Error Handling - Stop
+# Category: Error Handling
+# Level: Simple
+# Description: Default error handling (stop on error)
+
+commands:
+  - echo: "Test: Error handling with onError: stop"
+  - "echo 'Command before error'"
+  - "invalid_command"
+  - "echo 'This should not execute'"
+

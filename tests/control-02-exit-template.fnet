@@ -1,0 +1,14 @@
+# Test: Exit with Template
+# Category: Control
+# Level: Medium
+# Description: Exit code from template variable
+
+commands:
+  - echo: "Test: Exit with template"
+  - echo: "Environment: {{env}}"
+  - echo: "Success: {{success}}"
+  - exit: "{{success ? 0 : 1}}"
+context:
+  env: "production"
+  success: true
+

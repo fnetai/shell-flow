@@ -1,0 +1,18 @@
+# Test: Environment Variables
+# Category: Environment
+# Level: Medium
+# Description: Environment variable handling
+
+commands:
+  - echo: "Test: Environment variables"
+  - steps:
+      - "echo $TEST_VAR"
+    env:
+      TEST_VAR: "Test environment variable"
+  - steps:
+      - "echo $GLOBAL_VAR $LOCAL_VAR"
+    env:
+      LOCAL_VAR: "Local variable"
+env:
+  GLOBAL_VAR: "Global variable"
+

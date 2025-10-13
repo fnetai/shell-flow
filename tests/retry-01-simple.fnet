@@ -1,0 +1,14 @@
+# Test: Simple Retry
+# Category: Retry
+# Level: Simple
+# Description: Simple retry with default settings
+
+commands:
+  - echo: "Test: Simple retry with defaults"
+  - steps:
+      - "test -f /tmp/retry-test.flag || (touch /tmp/retry-test.flag && exit 1)"
+      - "echo 'Success after retry!'"
+    retry: true
+    onError: "continue"
+  - "rm -f /tmp/retry-test.flag"
+

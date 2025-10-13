@@ -1,0 +1,17 @@
+# Test: Configured Retry
+# Category: Retry
+# Level: Medium
+# Description: Retry with custom configuration
+
+commands:
+  - echo: "Test: Configured retry"
+  - steps:
+      - "test -f /tmp/retry-configured.flag || (touch /tmp/retry-configured.flag && exit 1)"
+      - "echo 'Success with configured retry!'"
+    retry:
+      attempts: 2
+      delay: 500
+      codes: [1]
+    onError: "continue"
+  - "rm -f /tmp/retry-configured.flag"
+

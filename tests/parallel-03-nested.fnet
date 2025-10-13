@@ -1,0 +1,16 @@
+# Test: Nested Parallel and Fork
+# Category: Parallel
+# Level: Advanced
+# Description: Nested parallel and fork execution
+
+commands:
+  - echo: "Test: Nested parallel and fork"
+  - parallel:
+      - "echo 'Parallel task 1'"
+      - fork:
+          - "sleep 2 && echo 'Nested background task'"
+      - steps:
+          - "echo 'Nested step 1'"
+          - "echo 'Nested step 2'"
+  - echo: "Nested execution completed"
+

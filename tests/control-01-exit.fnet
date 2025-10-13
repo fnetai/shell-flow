@@ -1,0 +1,15 @@
+# Test: Exit Command
+# Category: Control
+# Level: Simple
+# Description: Process exit with cleanup
+
+commands:
+  - echo: "Test: Exit command"
+  - fork:
+      - "echo 'Starting background process' && sleep 60"
+  - echo: "Background process started"
+  - sleep: 2
+  - echo: "Now exiting - background process should terminate"
+  - exit: 0
+  - echo: "This should not execute"
+

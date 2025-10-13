@@ -1,0 +1,13 @@
+# Test: Simple Parallel Execution
+# Category: Parallel
+# Level: Simple
+# Description: Basic parallel command execution
+
+commands:
+  - echo: "Test: Parallel execution"
+  - parallel:
+      - "sleep 2 && echo 'Parallel task 1 completed'"
+      - "sleep 1 && echo 'Parallel task 2 completed'"
+      - "sleep 3 && echo 'Parallel task 3 completed'"
+  - echo: "All parallel tasks completed"
+

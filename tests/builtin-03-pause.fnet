@@ -1,0 +1,16 @@
+# Test: Pause Command
+# Category: Builtin
+# Level: Medium
+# Description: Built-in pause command (requires user interaction)
+
+commands:
+  - echo: "Test: Pause command"
+  - echo: "Starting background process..."
+  - fork:
+      - "while true; do echo 'Background running...'; sleep 2; done"
+  - echo: "Background process started"
+  - pause: "Press Enter to continue with the test..."
+  - echo: "Testing pause with default message..."
+  - pause: true
+  - echo: "Test completed"
+

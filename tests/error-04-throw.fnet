@@ -1,0 +1,12 @@
+# Test: Error Handling - Throw
+# Category: Error Handling
+# Level: Simple
+# Description: Throw exception on error
+
+commands:
+  - echo: "Test: Error handling with onError: throw"
+  - "echo 'Command before error'"
+  - "invalid_command"
+  - "echo 'This should not execute'"
+onError: throw
+

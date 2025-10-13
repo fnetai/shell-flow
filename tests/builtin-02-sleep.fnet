@@ -1,0 +1,16 @@
+# Test: Sleep Command
+# Category: Builtin
+# Level: Simple
+# Description: Built-in sleep command
+
+commands:
+  - echo: "Test: Sleep command"
+  - echo: "Waiting for 1 second..."
+  - sleep: 1
+  - echo: "Sleep completed"
+  - echo: "Waiting for 2 seconds with template..."
+  - sleep: "{{duration}}"
+  - echo: "Template sleep completed"
+context:
+  duration: 2
+

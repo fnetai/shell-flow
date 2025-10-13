@@ -1,0 +1,12 @@
+# Test: Error Handling - Continue
+# Category: Error Handling
+# Level: Simple
+# Description: Continue execution despite errors
+
+commands:
+  - echo: "Test: Error handling with onError: continue"
+  - "echo 'Command before error'"
+  - "invalid_command"
+  - "echo 'This should execute despite the error'"
+onError: continue
+

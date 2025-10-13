@@ -1,0 +1,14 @@
+# Test: Fork (Background) Execution
+# Category: Parallel
+# Level: Medium
+# Description: Background process execution with fork
+
+commands:
+  - echo: "Test: Fork execution"
+  - fork:
+      - "sleep 3 && echo 'Background task 1 completed'"
+      - "sleep 2 && echo 'Background task 2 completed'"
+  - echo: "Main process continues immediately"
+  - sleep: 5
+  - echo: "Main process completed"
+

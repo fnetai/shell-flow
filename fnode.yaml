@@ -4,21 +4,90 @@ ai::name: "@fnet/shell-flow"
 t::py::ai::name: "fnet_shell_flow"
 
 s::repo.url: https://gitlab.com/fnetai/shell-flow.git
-input: g::file://fnet/input.yaml
+
+t::nd::input: g::file://fnet/input.yaml
 
 features:
+  s::runtime.type: bun
+  t::nd::s::runtime.type: node
+  t::py::s::runtime.type: python
+
   dts: true
   app: false
-  cli: false
-    
-  # t::dev::s::cli.fargs.default: dev
-  # t::py::s::runtime.type: python
+
+  t::nd::cli: false
 
 commands:
   dev:
     - fnode build -ftag dev
     - fnode cli
+
   node-deploy:
     - fnode deploy --ftag nd
+
   python-deploy:
     - fnode deploy --ftag py
+
+  # === Test Categories ===
+
+  test-basic:
+    - fnode cli --config basic-01-simple-commands
+    - fnode cli --config basic-02-script-mode
+
+  test-builtin:
+    - fnode cli --config builtin-01-echo
+    - fnode cli --config builtin-02-sleep
+
+  test-template:
+    - fnode cli --config template-01-required
+    - fnode cli --config template-02-advanced
+
+  test-parallel:
+    - fnode cli --config parallel-01-simple
+    - fnode cli --config parallel-02-fork
+    - fnode cli --config parallel-03-nested
+
+  test-error:
+    - fnode cli --config error-01-stop
+    - fnode cli --config error-02-continue
+    - fnode cli --config error-03-log
+
+  test-retry:
+    - fnode cli --config retry-01-simple
+    - fnode cli --config retry-02-configured
+    - fnode cli --config retry-03-global
+
+  test-env:
+    - fnode cli --config env-01-wdir
+    - fnode cli --config env-02-variables
+
+  test-control:
+    - fnode cli --config control-01-exit
+    - fnode cli --config control-02-exit-template
+
+  test-complex:
+    - fnode cli --config complex-01-mixed-execution
+    - fnode cli --config complex-02-full-features
+
+  # === Interactive Tests (require user input) ===
+
+  test-interactive:
+    - fnode cli --config builtin-03-pause
+
+  # === Tests that throw errors (run separately) ===
+
+  test-throw:
+    - fnode cli --config error-04-throw
+
+  # === Run All Automated Tests ===
+
+  test-all:
+    - frun test-basic
+    - frun test-builtin
+    - frun test-template
+    - frun test-parallel
+    - frun test-error
+    - frun test-retry
+    - frun test-env
+    - frun test-control
+    - frun test-complex

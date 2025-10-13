@@ -1,0 +1,14 @@
+# Test: Script Mode Execution
+# Category: Basic
+# Level: Medium
+# Description: Script mode with environment variables
+
+commands:
+  - echo: "Test: Script mode with environment variables"
+  - steps:
+      - "export MY_VAR=\"Hello World\""
+      - "echo \"Environment variable: $MY_VAR\""
+      - "echo \"Current directory: $(pwd)\""
+    useScript: true
+    captureName: script_output
+

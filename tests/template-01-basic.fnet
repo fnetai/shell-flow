@@ -1,0 +1,18 @@
+# Test: Basic Template Variables
+# Category: Template
+# Level: Simple
+# Description: Basic template variable substitution
+
+commands:
+  - echo: "Test: Basic template variables"
+  - "echo 'User: {{user.name}}'"
+  - "echo 'App: {{app.name}}'"
+  - "echo 'Port: {{config.port}}'"
+context:
+  user:
+    name: "John Doe"
+  app:
+    name: "My App"
+  config:
+    port: 3000
+

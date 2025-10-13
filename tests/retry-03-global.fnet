@@ -1,0 +1,18 @@
+# Test: Global Retry Settings
+# Category: Retry
+# Level: Advanced
+# Description: Global retry configuration
+
+commands:
+  - echo: "Test: Global retry settings"
+  - "test -f /tmp/retry-global.flag || (touch /tmp/retry-global.flag && exit 1)"
+  - "echo 'Success using global retry!'"
+  - "rm -f /tmp/retry-global.flag"
+retry:
+  attempts: 3
+  delay: 500
+  factor: 2
+  maxDelay: 5000
+  codes: [1]
+onError: "continue"
+

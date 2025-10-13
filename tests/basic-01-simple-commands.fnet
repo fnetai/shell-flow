@@ -1,0 +1,11 @@
+# Test: Basic Sequential Commands
+# Category: Basic
+# Level: Simple
+# Description: Simple sequential command execution
+
+commands:
+  - echo: "Test: Simple sequential commands"
+  - "echo 'Command 1'"
+  - "echo 'Command 2'"
+  - "echo 'Command 3'"
+

@@ -1,0 +1,13 @@
+# Test: Echo Command
+# Category: Builtin
+# Level: Simple
+# Description: Built-in echo command
+
+commands:
+  - echo: "Test: Echo command"
+  - echo: "This is a simple echo test"
+  - echo: "Echo with template: {{value}}"
+  - echo: "Echo test completed"
+context:
+  value: "Template Value"
+

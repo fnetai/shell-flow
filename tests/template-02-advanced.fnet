@@ -1,0 +1,16 @@
+# Test: Advanced Template Features
+# Category: Template
+# Level: Advanced
+# Description: Advanced template features (required, optional, default, array)
+
+commands:
+  - echo: "Test: Advanced template features"
+  - "echo 'Required value: {{required!}}'"
+  - "echo 'Optional value: {{optional?}}'"
+  - "echo 'Default value: {{missing || default}}'"
+  - "echo 'Array access: {{array.0}}'"
+context:
+  required: "Required Value"
+  array: ["First", "Second"]
+  default: "Default Value"
+
