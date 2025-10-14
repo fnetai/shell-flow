@@ -1,0 +1,11 @@
+# Test: CTRL+C Nested frun
+# Category: Test
+# Level: Advanced
+# Description: Test CTRL+C with nested shell-flow commands (parent -> child processes)
+
+commands:
+  - echo: "Level 1: Starting nested CTRL+C test..."
+  - echo: "Level 1: Launching child process..."
+  - bun ./dist/cli/esm/index.js --config test-ctrl-c-child
+  - echo: "Level 1: This should not execute if CTRL+C is pressed in child"
+

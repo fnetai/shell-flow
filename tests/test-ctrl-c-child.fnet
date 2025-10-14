@@ -1,0 +1,20 @@
+# Test: CTRL+C Child Process
+# Category: Test
+# Level: Advanced
+# Description: Child process with background and parallel tasks
+
+commands:
+  - echo: "Level 2: Child process starting background tasks..."
+  - fork:
+      - sleep 100
+      - sleep 200
+  - echo: "Level 2: Background tasks started"
+  - echo: "Level 2: Starting parallel tasks..."
+  - parallel:
+      - sleep 300
+      - sleep 400
+  - echo: "Level 2: Parallel tasks started"
+  - echo: "Level 2: Press CTRL+C now to test cleanup!"
+  - sleep 1000
+  - echo: "Level 2: This should not execute if CTRL+C is pressed"
+

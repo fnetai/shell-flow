@@ -1,0 +1,15 @@
+# Test: Signal handling with background processes
+# Category: Process Control
+# Level: Advanced
+# Description: Test SIGINT (Ctrl+C) handling with background processes
+
+commands:
+  - echo: "Test 6.1: Signal handling with background processes"
+  - fork:
+      - "echo 'Starting background process' && sleep 60 && echo 'This should never print'"
+      - "echo 'Starting another background process' && sleep 60 && echo 'This should never print either'"
+  - echo: "Background processes started"
+  - echo: "Press Ctrl+C to test signal handling (SIGINT)"
+  - sleep: 30
+  - echo: "This line should not be executed if you press Ctrl+C"
+

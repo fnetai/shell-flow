@@ -1,0 +1,16 @@
+# Test: Complete process termination
+# Category: Process Control
+# Level: Advanced
+# Description: Test that exit command terminates all background processes
+
+commands:
+  - echo: "Test 6.2: Complete process termination"
+  - fork:
+      - "echo 'Starting long-running process 1' && sleep 60 && echo 'This should never print'"
+      - "echo 'Starting long-running process 2' && sleep 60 && echo 'This should never print either'"
+  - echo: "Background processes started"
+  - sleep: 2
+  - echo: "Now exiting - all background processes should terminate completely"
+  - exit: 0
+  - echo: "This line should not be executed"
+

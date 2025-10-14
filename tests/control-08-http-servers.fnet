@@ -1,0 +1,31 @@
+# Test: HTTP servers with proper termination
+# Category: Process Control
+# Level: Advanced
+# Description: Test that HTTP servers are properly terminated on exit
+
+commands:
+  - echo: "Test 6.4: HTTP servers with proper termination"
+  - echo: "Creating temporary HTTP server scripts..."
+  - steps:
+      - "echo 'import http from \"http\"; const server = http.createServer((req, res) => { res.writeHead(200); res.end(\"Server 1\"); }); server.listen(3001); console.log(\"HTTP Server 1 running on port 3001\"); process.on(\"SIGTERM\", () => { console.log(\"Server 1 received SIGTERM, shutting down...\"); server.close(() => { console.log(\"Server 1 closed\"); }); });' > server1.js"
+      - "echo 'import http from \"http\"; const server = http.createServer((req, res) => { res.writeHead(200); res.end(\"Server 2\"); }); server.listen(3002); console.log(\"HTTP Server 2 running on port 3002\"); process.on(\"SIGTERM\", () => { console.log(\"Server 2 received SIGTERM, shutting down...\"); server.close(() => { console.log(\"Server 2 closed\"); }); });' > server2.js"
+      - "echo 'import http from \"http\"; const server = http.createServer((req, res) => { res.writeHead(200); res.end(\"Server 3\"); }); server.listen(3003); console.log(\"HTTP Server 3 running on port 3003\"); process.on(\"SIGTERM\", () => { console.log(\"Server 3 received SIGTERM, shutting down...\"); server.close(() => { console.log(\"Server 3 closed\"); }); });' > server3.js"
+  - echo: "Starting HTTP servers as background processes..."
+  - fork:
+      - "node server1.js"
+      - "node server2.js"
+      - "node server3.js"
+  - echo: "Waiting for servers to start..."
+  - sleep: 2
+  - echo: "Testing HTTP servers..."
+  - parallel:
+      - "curl -s http://localhost:3001 || echo 'Server 1 not responding'"
+      - "curl -s http://localhost:3002 || echo 'Server 2 not responding'"
+      - "curl -s http://localhost:3003 || echo 'Server 3 not responding'"
+  - echo: "Cleaning up temporary server scripts..."
+  - steps:
+      - "rm -f server1.js server2.js server3.js"
+  - echo: "Now exiting - all HTTP servers should be properly terminated"
+  - exit: 0
+  - echo: "This line should not be executed"
+

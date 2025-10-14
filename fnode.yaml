@@ -65,6 +65,32 @@ commands:
     - fnode cli --config control-01-exit || true
     - fnode cli --config control-02-exit-template || true
 
+  test-process-control:
+    - echo "=== Process Control Tests ==="
+    - echo ""
+    - echo "Test 6.1: Signal handling (CTRL+C)"
+    - echo "  Run: fnode cli --config control-06-signal-handling"
+    - echo "  Then press CTRL+C and verify all processes terminate"
+    - echo ""
+    - echo "Test 6.2: Complete termination with exit command"
+    - echo "  Run: fnode cli --config control-07-complete-termination"
+    - echo "  Verify all background processes terminate on exit"
+    - echo ""
+    - echo "Test 6.3: Nested CTRL+C test"
+    - echo "  Run: fnode cli --config test-ctrl-c-nested"
+    - echo "  Then press CTRL+C and verify all nested processes terminate"
+    - echo ""
+    - echo "Test 6.4: HTTP servers with proper termination"
+    - echo "  Run: fnode cli --config control-08-http-servers"
+    - echo "  Verify HTTP servers are properly terminated on exit"
+    - echo ""
+    - echo "Test 6.5: HTTP servers with error handling"
+    - echo "  Run: fnode cli --config control-09-http-servers-error"
+    - echo "  Verify HTTP servers are properly terminated on error"
+    - echo ""
+    - echo "To verify cleanup after each test:"
+    - echo "  ps aux | grep -E '(sleep|node|bun)' | grep -v grep"
+
   test-expression:
     - fnode cli --config expression-01-capture
     - fnode cli --config expression-02-retry
