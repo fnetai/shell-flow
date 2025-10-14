@@ -1,0 +1,22 @@
+# Test: Text Builtins
+# Category: Builtin
+# Level: Simple
+# Description: Text transformation operations (txt::)
+
+commands:
+  - echo: "Test: Text builtins (txt::)"
+
+  # Uppercase
+  - txt::upper::upper: "hello world"
+  - echo: "Uppercase: {{$.upper}}"
+
+  # Lowercase
+  - txt::lower::lower: "HELLO WORLD"
+  - echo: "Lowercase: {{$.lower}}"
+
+  # Trim
+  - txt::trim::trimmed: "  hello world  "
+  - echo: "Trimmed: '{{$.trimmed}}'"
+
+  - echo: "Text tests completed!"
+

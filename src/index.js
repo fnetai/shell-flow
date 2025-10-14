@@ -16,12 +16,12 @@ import {
   executeJsonParse,
   executeJsonStringify,
   executeJsonGet,
-  executeTransformUppercase,
-  executeTransformLowercase,
-  executeTransformTrim,
-  executeTransformReplace,
-  executeTransformSplit,
-  executeTransformJoin,
+  executeTxtUppercase,
+  executeTxtLowercase,
+  executeTxtTrim,
+  executeTxtReplace,
+  executeTxtSplit,
+  executeTxtJoin,
   executeFileRead,
   executeFileWrite,
   executeFileExists,
@@ -306,37 +306,37 @@ export default async function ({
                     throw new Error(`Invalid json expression format. Expected: json::<operation>::<contextName>`);
                   }
                 }
-                else if (parsed.processor === 'transform') {
-                  // Format: transform::<operation>::<contextName>
+                else if (parsed.processor === 'txt') {
+                  // Format: txt::<operation>::<contextName>
                   const colonIndex = parsed.statement.indexOf('::');
                   if (colonIndex !== -1) {
                     const operation = parsed.statement.substring(0, colonIndex).trim();
                     const contextName = parsed.statement.substring(colonIndex + 2).trim();
 
-                    if (operation === 'uppercase') {
-                      await executeTransformUppercase(nestedCommand, contextName, fullContext, runtimeContext);
+                    if (operation === 'upper' || operation === 'uppercase') {
+                      await executeTxtUppercase(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
-                    } else if (operation === 'lowercase') {
-                      await executeTransformLowercase(nestedCommand, contextName, fullContext, runtimeContext);
+                    } else if (operation === 'lower' || operation === 'lowercase') {
+                      await executeTxtLowercase(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'trim') {
-                      await executeTransformTrim(nestedCommand, contextName, fullContext, runtimeContext);
+                      await executeTxtTrim(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'replace') {
-                      await executeTransformReplace(nestedCommand, contextName, fullContext, runtimeContext);
+                      await executeTxtReplace(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'split') {
-                      await executeTransformSplit(nestedCommand, contextName, fullContext, runtimeContext);
+                      await executeTxtSplit(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'join') {
-                      await executeTransformJoin(nestedCommand, contextName, fullContext, runtimeContext);
+                      await executeTxtJoin(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else {
-                      throw new Error(`Unknown transform operation: ${operation}. Supported: uppercase, lowercase, trim, replace, split, join`);
+                      throw new Error(`Unknown txt operation: ${operation}. Supported: upper, lower, trim, replace, split, join`);
                     }
                     break;
                   } else {
-                    throw new Error(`Invalid transform expression format. Expected: transform::<operation>::<contextName>`);
+                    throw new Error(`Invalid txt expression format. Expected: txt::<operation>::<contextName>`);
                   }
                 }
                 else if (parsed.processor === 'file') {

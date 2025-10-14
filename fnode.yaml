@@ -65,6 +65,27 @@ commands:
     - fnode cli --config control-01-exit
     - fnode cli --config control-02-exit-template
 
+  test-expression:
+    - fnode cli --config expression-01-capture
+    - fnode cli --config expression-02-retry
+    - fnode cli --config expression-03-composable
+    - fnode cli --config expression-04-json
+
+  test-txt:
+    - fnode cli --config builtin-05-txt
+
+  test-file:
+    - fnode cli --config builtin-06-file
+
+  test-http:
+    - fnode cli --config builtin-07-http
+
+  test-encode:
+    - fnode cli --config builtin-08-encode
+
+  test-time:
+    - fnode cli --config builtin-09-time
+
   test-complex:
     - fnode cli --config complex-01-mixed-execution
     - fnode cli --config complex-02-full-features
@@ -90,4 +111,10 @@ commands:
     - frun test-retry
     - frun test-env
     - frun test-control
+    - frun test-expression
+    - frun test-txt
+    - frun test-file
+    - frun test-http
+    - frun test-encode
+    - frun test-time
     - frun test-complex

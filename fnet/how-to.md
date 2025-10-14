@@ -26,7 +26,7 @@ yarn add @fnet/shell-flow
 - **JSON Operations** - Parse, stringify, and extract JSON data (`json::parse`, `json::get`)
 - **HTTP Requests** - Make GET, POST, PUT, DELETE requests (`http::get`, `http::post`)
 - **File Operations** - Read, write, copy, delete files (`file::read`, `file::write`)
-- **String Transformations** - Uppercase, lowercase, trim, replace, split, join (`transform::*`)
+- **Text Transformations** - Uppercase, lowercase, trim, replace, split, join (`txt::*`)
 - **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
 - **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
@@ -270,7 +270,7 @@ commands:
   - capture::logs: npm run test
   - retry::3: curl https://api.example.com
   - json::parse::data: "{{response}}"
-  - transform::uppercase::result: "hello world"
+  - txt::upper::result: "hello world"
 ```
 
 ### Composable Expressions
@@ -597,25 +597,25 @@ await shellFlow({
 - `json::stringify::<name>: <object>` - Convert object to JSON string
 - `json::get::<name>: <json_path>` - Extract value using JSONPath
 
-### Transform Operations
+### Text Operations
 
-String transformation operations:
+Text transformation operations using the `txt::` processor (note the **X** - cross in the middle!):
 
 ```javascript
 await shellFlow({
   commands: [
     // Uppercase
-    { 'transform::uppercase::upper': 'hello world' },
+    { 'txt::upper::upper': 'hello world' },
     { echo: '{{$.upper}}' },  // HELLO WORLD
 
     // Lowercase
-    { 'transform::lowercase::lower': 'HELLO WORLD' },
+    { 'txt::lower::lower': 'HELLO WORLD' },
 
     // Trim whitespace
-    { 'transform::trim::trimmed': '  hello  ' },
+    { 'txt::trim::trimmed': '  hello  ' },
 
     // Replace text
-    { 'transform::replace::result': {
+    { 'txt::replace::result': {
         input: 'hello world',
         search: 'world',
         replace: 'universe'
@@ -623,14 +623,14 @@ await shellFlow({
     },
 
     // Split string to array
-    { 'transform::split::items': {
+    { 'txt::split::items': {
         input: 'a,b,c',
         delimiter: ','
       }
     },
 
     // Join array to string
-    { 'transform::join::result': {
+    { 'txt::join::result': {
         input: ['a', 'b', 'c'],
         delimiter: ','
       }
@@ -639,14 +639,14 @@ await shellFlow({
 });
 ```
 
-**Transform Operations:**
+**Text Operations:**
 
-- `transform::uppercase::<name>: <text>` - Convert to uppercase
-- `transform::lowercase::<name>: <text>` - Convert to lowercase
-- `transform::trim::<name>: <text>` - Trim whitespace
-- `transform::replace::<name>: {input, search, replace}` - Replace text (supports regex)
-- `transform::split::<name>: {input, delimiter}` - Split string to array
-- `transform::join::<name>: {input, delimiter}` - Join array to string
+- `txt::upper::<name>: <text>` - Convert to uppercase (alias: `uppercase`)
+- `txt::lower::<name>: <text>` - Convert to lowercase (alias: `lowercase`)
+- `txt::trim::<name>: <text>` - Trim whitespace
+- `txt::replace::<name>: {input, search, replace}` - Replace text (supports regex)
+- `txt::split::<name>: {input, delimiter}` - Split string to array
+- `txt::join::<name>: {input, delimiter}` - Join array to string
 
 ### File Operations
 
@@ -941,7 +941,7 @@ await shellFlow({
 
 ## Best Practices
 
-1. **Use expression syntax for builtin operations** - Leverage `json::`, `http::`, `file::`, etc. instead of shell commands
+1. **Use expression syntax for builtin operations** - Leverage `json::`, `http::`, `file::`, `txt::`, etc. instead of shell commands
 2. **Access builtin results via `$.name`** - Runtime context prevents naming collisions
 3. **Use appropriate error handling policy** - Choose `stop`, `continue`, or `throw` based on your use case
 4. **Capture output when needed** - Use `capture::name` for command output processing

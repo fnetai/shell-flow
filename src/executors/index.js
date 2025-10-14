@@ -3,13 +3,13 @@ export { default as executeStepsWithScript } from './executeStepsWithScript.js';
 export { executeSleep, executeEcho, executeFilemap, executePause } from './builtins.js';
 export { executeJsonParse, executeJsonStringify, executeJsonGet } from './json-builtins.js';
 export {
-  executeTransformUppercase,
-  executeTransformLowercase,
-  executeTransformTrim,
-  executeTransformReplace,
-  executeTransformSplit,
-  executeTransformJoin
-} from './transform-builtins.js';
+  executeTxtUppercase,
+  executeTxtLowercase,
+  executeTxtTrim,
+  executeTxtReplace,
+  executeTxtSplit,
+  executeTxtJoin
+} from './txt-builtins.js';
 export {
   executeFileRead,
   executeFileWrite,

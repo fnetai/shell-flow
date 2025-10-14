@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The `@fnet/shell-flow` project is designed to simplify the process of executing shell commands within a Node.js environment. It offers a structured way to orchestrate command execution sequences with customizable error handling, allowing for execution in parallel, in sequence, or in the background. Users looking to run a series of shell commands programmatically will find this tool helpful for managing and capturing command outputs.
+The `@fnet/shell-flow` project provides a powerful, expression-based shell command orchestration system for Node.js. Execute shell commands in sequence, parallel, or as background processes with built-in support for JSON operations, HTTP requests, file management, text transformations, and more. All builtin operations write to a dedicated runtime context (`$`) for clean, collision-free data management.
 
 ## How It Works
 
@@ -10,14 +10,32 @@ At its core, `@fnet/shell-flow` accepts a configuration object that specifies th
 
 ## Key Features
 
+### Core Execution Modes
+
 - **Sequential Command Execution**: Run commands one after the other, halting on errors if required.
 - **Parallel Command Execution**: Execute multiple commands simultaneously for increased efficiency.
 - **Background Execution**: Fork commands to run in the background, allowing the main process to continue without waiting.
-- **Error Handling**: Customize how to handle command errors with options to stop, continue, log, or throw errors.
-- **Environment Variable Support**: Flexibly manage environment configurations per command or globally.
-- **Template Resolution**: Process string templates embedded in commands for dynamic parameter substitution.
-- **Capture Command Outputs**: Store and access command outputs for further processing or logging.
+
+### Expression-Based Builtins
+
+- **JSON Operations**: Parse, stringify, and extract JSON data (`json::parse`, `json::get`)
+- **HTTP Requests**: Make GET, POST, PUT, DELETE requests (`http::get`, `http::post`)
+- **File Operations**: Read, write, copy, delete files (`file::read`, `file::write`)
+- **Text Transformations**: Uppercase, lowercase, trim, replace, split, join (`txt::upper`, `txt::lower`)
+- **Encoding/Hashing**: Base64, URL encoding, SHA256, MD5 (`encode::base64`, `hash::sha256`)
+- **Time Operations**: Timestamps, formatting, parsing (`time::now`, `time::format`)
+
+### Advanced Features
+
+- **Runtime Context ($)**: Dedicated namespace for builtin results, prevents naming collisions
+- **Template Variables**: Dynamic value substitution with `{{variable}}` syntax
+- **Error Handling**: Customizable policies: stop, continue, throw
+- **Output Capture**: Store and access command outputs for further processing or logging
+
+## Documentation
+
+For comprehensive documentation, examples, and API reference, see [fnet/how-to.md](fnet/how-to.md).
 
 ## Conclusion
 
-`@fnet/shell-flow` provides a modest yet effective tool for managing shell command execution within a Node.js application. It allows developers to streamline their workflow by running and controlling multiple commands efficiently, with robust error handling and output capturing capabilities. This makes it suitable for automation scripts, build systems, and various development tasks requiring programmatic shell command executions.
+`@fnet/shell-flow` provides a powerful, expression-based tool for managing shell command execution within a Node.js application. It allows developers to streamline their workflow by running and controlling multiple commands efficiently, with robust error handling, output capturing, and built-in operations for JSON, HTTP, files, text transformations, and more. This makes it suitable for automation scripts, build systems, and various development tasks requiring programmatic shell command executions.
