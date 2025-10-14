@@ -12,8 +12,14 @@ import {
   executeSleep,
   executeEcho,
   executeFilemap,
-  executePause
+  executePause,
+  executeJsonParse,
+  executeJsonStringify,
+  executeJsonGet
 } from './executors/index.js';
+
+// Import expression parser
+import parseExpression from '@fnet/expression';
 
 
 
@@ -83,12 +89,23 @@ export default async function ({
   retry = false
 }) {
   wdir = wdir || process.cwd();
-  // Process templates in all inputs
-  const processedCommands = processTemplates(commands, context);
-  const processedFork = processTemplates(fork, context);
-  const processedParallel = processTemplates(parallel, context);
-  const processedEnv = processTemplates(env, context);
-  const processedWdir = processTemplates(wdir, context);
+
+  // Create runtime context namespace ($)
+  const runtimeContext = {};
+
+  // Merge contexts: user context + runtime context ($)
+  const fullContext = {
+    ...context,
+    $: runtimeContext
+  };
+
+  // Note: Template processing is done lazily during command execution
+  // to allow runtime context ($) to be populated by previous commands
+  const processedCommands = commands;
+  const processedFork = fork;
+  const processedParallel = parallel;
+  const processedEnv = env;
+  const processedWdir = wdir;
 
   const processManager = new ProcessManager();
   const capture = {};
@@ -101,22 +118,206 @@ export default async function ({
     async processCommands(commands, onError, env, wdir, captureName, captureRoot, retryConfig = globalRetryConfig) {
       const capture = captureName ? { items: [] } : undefined;
 
-      for (const cmd of commands) {
+      for (let cmd of commands) {
         try {
+          // Process templates with current context (includes runtime $ context)
+          cmd = processTemplates(cmd, fullContext);
+
           if (typeof cmd === 'string') {
-            // Get the retry config for this command (use the parent's config)
-            const cmdRetryConfig = retryConfig;
+            // Check if command uses expression syntax (processor::statement)
+            // Support composable expressions: retry::3::capture::logs::command
+            let actualCommand = cmd;
+            let expressionCaptureName = null;
+            let expressionRetryConfig = null;
+
+            // Process expressions in a loop to support composition
+            let currentExpression = cmd;
+            while (currentExpression.includes('::')) {
+              const parsed = parseExpression({ expression: currentExpression });
+
+              if (!parsed || !parsed.processor) {
+                // No more processors, treat as command
+                actualCommand = currentExpression;
+                break;
+              }
+
+              if (parsed.processor === 'capture') {
+                // Format: capture::<name>::<rest>
+                const colonIndex = parsed.statement.indexOf('::');
+                if (colonIndex !== -1) {
+                  expressionCaptureName = parsed.statement.substring(0, colonIndex).trim();
+                  currentExpression = parsed.statement.substring(colonIndex + 2).trim();
+                } else {
+                  throw new Error(`Invalid capture expression format. Expected: capture::<name>::<command>`);
+                }
+              }
+              else if (parsed.processor === 'retry') {
+                // Format: retry::<attempts>::<rest>
+                const colonIndex = parsed.statement.indexOf('::');
+                if (colonIndex !== -1) {
+                  const attempts = parseInt(parsed.statement.substring(0, colonIndex).trim(), 10);
+                  currentExpression = parsed.statement.substring(colonIndex + 2).trim();
+
+                  if (Number.isInteger(attempts) && attempts > 0) {
+                    expressionRetryConfig = normalizeRetryConfig({
+                      attempts,
+                      delay: 1000,
+                      factor: 2,
+                      maxDelay: 30000,
+                      codes: [1]
+                    });
+                  } else {
+                    throw new Error(`Invalid retry attempts: ${attempts}. Must be a positive integer.`);
+                  }
+                } else {
+                  throw new Error(`Invalid retry expression format. Expected: retry::<attempts>::<command>`);
+                }
+              }
+              else {
+                // Unknown processor, treat rest as command
+                actualCommand = currentExpression;
+                break;
+              }
+            }
+
+            // If no more :: found, use current expression as command
+            if (!currentExpression.includes('::') && currentExpression !== cmd) {
+              actualCommand = currentExpression;
+            }
+
+            // Get the retry config for this command
+            // Priority: expression > parent config
+            const cmdRetryConfig = expressionRetryConfig || retryConfig;
+
+            // Determine capture target
+            const captureTarget = expressionCaptureName
+              ? { items: [] }
+              : capture;
 
             if (cmdRetryConfig) {
               await withRetry(
-                () => executeCommand(cmd, env, wdir, capture, processManager),
+                () => executeCommand(actualCommand, env, wdir, captureTarget, processManager),
                 cmdRetryConfig
               );
             } else {
-              await executeCommand(cmd, env, wdir, capture, processManager);
+              await executeCommand(actualCommand, env, wdir, captureTarget, processManager);
+            }
+
+            // If expression capture was used, store it in captureRoot AND $ context
+            if (expressionCaptureName && captureTarget) {
+              captureRoot[expressionCaptureName] = captureTarget;
+              runtimeContext[expressionCaptureName] = captureTarget; // Also add to $ context
             }
           } else if (typeof cmd === 'object') {
             const keys = Object.keys(cmd);
+
+            // Check if any key uses expression syntax (processor::statement)
+            const expressionKey = keys.find(k => k.includes('::'));
+
+            if (expressionKey) {
+              // Handle expression-based object commands
+              // Format: { "capture::name": "command" } or { "retry::3": "command" }
+              const commandValue = cmd[expressionKey];
+
+              // Parse the expression key
+              let expressionCaptureName = null;
+              let expressionRetryConfig = null;
+              let nestedCommand = commandValue;
+
+              // Process expression key
+              let currentExpression = expressionKey;
+              while (currentExpression.includes('::')) {
+                const parsed = parseExpression({ expression: currentExpression });
+
+                if (!parsed || !parsed.processor) {
+                  break;
+                }
+
+                if (parsed.processor === 'capture') {
+                  // Format: capture::<name>
+                  expressionCaptureName = parsed.statement.trim();
+                  break; // capture is terminal
+                }
+                else if (parsed.processor === 'retry') {
+                  // Format: retry::<attempts>
+                  const attempts = parseInt(parsed.statement.trim(), 10);
+
+                  if (Number.isInteger(attempts) && attempts > 0) {
+                    expressionRetryConfig = normalizeRetryConfig({
+                      attempts,
+                      delay: 1000,
+                      factor: 2,
+                      maxDelay: 30000,
+                      codes: [1]
+                    });
+                  } else {
+                    throw new Error(`Invalid retry attempts: ${attempts}. Must be a positive integer.`);
+                  }
+                  break; // retry is terminal for now
+                }
+                else if (parsed.processor === 'json') {
+                  // Format: json::<operation>::<contextName>
+                  // Statement contains: <operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    // Execute JSON builtin and mark as handled
+                    if (operation === 'parse') {
+                      await executeJsonParse(nestedCommand, contextName, fullContext, runtimeContext);
+                      // Mark as handled - will skip normal command execution below
+                      nestedCommand = null;
+                    } else if (operation === 'stringify') {
+                      await executeJsonStringify(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'get') {
+                      await executeJsonGet(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown JSON operation: ${operation}. Supported: parse, stringify, get`);
+                    }
+
+                    break; // json is terminal
+                  } else {
+                    throw new Error(`Invalid json expression format. Expected: json::<operation>::<contextName>`);
+                  }
+                }
+                else {
+                  break;
+                }
+              }
+
+              // Handle nested command (could be string, object, or null if already handled)
+              if (nestedCommand === null) {
+                // Command was already handled by builtin (e.g., json::parse)
+                // Skip to next command
+              } else if (typeof nestedCommand === 'string') {
+                const cmdRetryConfig = expressionRetryConfig || retryConfig;
+                const captureTarget = expressionCaptureName ? { items: [] } : capture;
+
+                if (cmdRetryConfig) {
+                  await withRetry(
+                    () => executeCommand(nestedCommand, env, wdir, captureTarget, processManager),
+                    cmdRetryConfig
+                  );
+                } else {
+                  await executeCommand(nestedCommand, env, wdir, captureTarget, processManager);
+                }
+
+                if (expressionCaptureName && captureTarget) {
+                  captureRoot[expressionCaptureName] = captureTarget;
+                  runtimeContext[expressionCaptureName] = captureTarget; // Also add to $ context
+                }
+              } else if (typeof nestedCommand === 'object') {
+                // Nested expression object: { "retry::3": { "capture::logs": "command" } }
+                // Recursively process as a command
+                await this.processCommands([nestedCommand], onError, env, wdir, captureName, captureRoot, expressionRetryConfig || retryConfig);
+              }
+
+              continue; // Skip to next command
+            }
+
             // Get the command-specific retry config, falling back to parent config
             const cmdRetryConfig = cmd.retry !== undefined ? normalizeRetryConfig(cmd.retry) : retryConfig;
 
@@ -124,7 +325,7 @@ export default async function ({
               if (keys.length !== 1) {
                 throw new Error('Exit command object must contain only the "exit" key');
               }
-              const exitCode = Number(processTemplates(cmd.exit, context));
+              const exitCode = Number(cmd.exit); // Already processed by template above
               if (Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 127) {
                 // Gracefully terminate all processes before exiting
                 // console.log(`Exiting with code ${exitCode}...`);
@@ -274,7 +475,16 @@ export default async function ({
     }
 
     await Promise.all(processPromises);
-    return Object.keys(capture).length ? capture : undefined;
+
+    // Return capture data + runtime context ($)
+    const result = Object.keys(capture).length ? capture : {};
+
+    // Always include runtime context ($) if it has data
+    if (Object.keys(runtimeContext).length > 0) {
+      result.$ = runtimeContext;
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
   } catch (error) {
     // Make sure to terminate all processes even if an error occurs
     // console.error(`Error in shell-flow execution: ${error.message}`);

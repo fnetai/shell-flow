@@ -1,0 +1,11 @@
+# Test: Expression - Capture
+# Category: Expression
+# Level: Simple
+# Description: Capture command output using expression syntax
+
+commands:
+  - echo: "Test: Expression-based capture"
+  - capture::test_output: echo 'Hello from captured command!'
+  - capture::date_output: date
+  - echo: "Capture completed successfully"
+

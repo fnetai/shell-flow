@@ -1,0 +1,13 @@
+# Test: Expression - Retry
+# Category: Expression
+# Level: Medium
+# Description: Retry command using expression syntax
+
+commands:
+  - echo: "Test: Expression-based retry"
+  - "rm -f /tmp/retry-expr-test.flag"
+  - retry::2: test -f /tmp/retry-expr-test.flag || (touch /tmp/retry-expr-test.flag && exit 1)
+  - echo: "Retry succeeded!"
+  - "rm -f /tmp/retry-expr-test.flag"
+onError: "continue"
+

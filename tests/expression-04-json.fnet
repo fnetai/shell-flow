@@ -1,0 +1,30 @@
+# Test: Expression - JSON Operations
+# Category: Expression
+# Level: Advanced
+# Description: JSON parse, stringify, and get operations with $ context
+
+commands:
+  - echo: "Test: JSON operations with $ context"
+  
+  # Step 1: Capture JSON response
+  - capture::json_response: echo '{"user":{"name":"John","age":30},"status":"active"}'
+  
+  # Step 2: Parse JSON and store in $.user_data
+  - json::parse::user_data: "{{$.json_response.items.0.stdout}}"
+  
+  # Step 3: Access parsed data from $ context
+  - echo: "User name from $: {{$.user_data.user.name}}"
+  - echo: "User age from $: {{$.user_data.user.age}}"
+  - echo: "Status from $: {{$.user_data.status}}"
+  
+  # Step 4: Get specific field
+  - json::get::user_name: "$.user_data.user.name"
+
+  # Step 5: Use extracted field
+  - echo: "Extracted name: {{$.user_name}}"
+
+  - echo: "JSON operations completed!"
+
+context:
+  env: "production"
+

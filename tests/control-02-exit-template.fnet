@@ -6,9 +6,9 @@
 commands:
   - echo: "Test: Exit with template"
   - echo: "Environment: {{env}}"
-  - echo: "Success: {{success}}"
-  - exit: "{{success ? 0 : 1}}"
+  - echo: "Exit code: {{exitCode}}"
+  - exit: "{{exitCode}}"
 context:
   env: "production"
-  success: true
+  exitCode: 0
 

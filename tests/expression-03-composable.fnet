@@ -1,0 +1,14 @@
+# Test: Expression - Composable
+# Category: Expression
+# Level: Advanced
+# Description: Composable expressions (retry + capture)
+
+commands:
+  - echo: "Test: Composable expressions"
+  - "rm -f /tmp/composable-test.flag"
+  - retry::2:
+      capture::retry_logs: test -f /tmp/composable-test.flag || (touch /tmp/composable-test.flag && exit 1)
+  - echo: "Composable expression succeeded!"
+  - "rm -f /tmp/composable-test.flag"
+onError: "continue"
+

@@ -1,0 +1,21 @@
+# Test: Filemap Command
+# Category: Builtin
+# Level: Advanced
+# Description: Built-in filemap command for file operations
+
+commands:
+  - echo: "Test: Filemap command"
+  - "mkdir -p /tmp/filemap-test/templates"
+  - "echo 'Hello {{name}}!' > /tmp/filemap-test/templates/test.njk"
+  - filemap:
+      target: "/tmp/filemap-test/output"
+      sources:
+        - source: "/tmp/filemap-test/templates/test.njk"
+          target: "test.txt"
+          engine: "nunjucks"
+          context:
+            name: "World"
+  - "cat /tmp/filemap-test/output/test.txt"
+  - "rm -rf /tmp/filemap-test"
+  - echo: "Filemap test completed"
+
