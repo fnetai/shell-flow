@@ -1,0 +1,20 @@
+# Test: CTRL+C Signal Handling
+# Category: Test
+# Level: Advanced
+# Description: Test that CTRL+C terminates all background and parallel processes
+
+commands:
+  - echo: "Starting background processes..."
+  - fork:
+      - sleep 100
+      - sleep 200
+  - echo: "Background processes started"
+  - echo: "Starting parallel processes..."
+  - parallel:
+      - sleep 300
+      - sleep 400
+  - echo: "Parallel processes started"
+  - echo: "Main process running... Press CTRL+C to test cleanup"
+  - sleep 1000
+  - echo: "This should not execute if CTRL+C is pressed"
+
