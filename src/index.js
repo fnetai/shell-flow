@@ -552,9 +552,7 @@ export default async function ({
 
                 // Break the loop to stop execution and return normally
                 // This allows the parent process to read the exitCode from the result
-                // TODO: Consider using process.exit() instead of returning
-                // process.exit(exitCode);
-                break;
+                process.exit(exitCode);
               } else {
                 throw new Error(`Invalid exit code: ${exitCode}. Must be integer between 0 and 127.`);
               }
