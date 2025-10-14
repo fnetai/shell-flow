@@ -10,7 +10,7 @@ import { ShellError } from '../core/index.js';
  * @param {string} wdir - Working directory for the command.
  * @returns {Promise<void>} Resolves when the command completes.
  */
-export default async function executeCommand(command, env, wdir, captureParent, processManager) {
+export default function executeCommand(command, env, wdir, captureParent, processManager) {
   return new Promise((resolve, reject) => {
     const pcs = spawn(command, {
       shell: true,

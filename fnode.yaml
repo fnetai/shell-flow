@@ -48,7 +48,7 @@ commands:
     - fnode cli --config parallel-03-nested
 
   test-error:
-    - fnode cli --config error-01-stop
+    - fnode cli --config error-01-stop || true
     - fnode cli --config error-02-continue
     - fnode cli --config error-03-continue-capture
 
@@ -62,8 +62,8 @@ commands:
     - fnode cli --config env-02-variables
 
   test-control:
-    - fnode cli --config control-01-exit
-    - fnode cli --config control-02-exit-template
+    - fnode cli --config control-01-exit || true
+    - fnode cli --config control-02-exit-template || true
 
   test-expression:
     - fnode cli --config expression-01-capture

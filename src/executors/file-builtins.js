@@ -1,7 +1,7 @@
 import { ShellError } from '../core/index.js';
 import { processTemplates } from '../utils/index.js';
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 /**
  * Reads file content and writes to runtime context ($)

@@ -550,8 +550,11 @@ export default async function ({
                 // Add a small delay to ensure all console output is flushed
                 await new Promise(resolve => setTimeout(resolve, 200));
 
-                // Exit the process directly after cleanup is complete
-                process.exit(exitCode);
+                // Break the loop to stop execution and return normally
+                // This allows the parent process to read the exitCode from the result
+                // TODO: Consider using process.exit() instead of returning
+                // process.exit(exitCode);
+                break;
               } else {
                 throw new Error(`Invalid exit code: ${exitCode}. Must be integer between 0 and 127.`);
               }
