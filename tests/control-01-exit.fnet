@@ -10,6 +10,6 @@ commands:
   - echo: "Background process started"
   - sleep: 2
   - echo: "Now exiting - background process should terminate"
-  - exit: 0
+  - exit: 1
   - echo: "This should not execute"
 

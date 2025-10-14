@@ -1,0 +1,12 @@
+# Test: Exit Code on Error
+# Category: Test
+# Level: Simple
+# Description: Test exitCode when command fails (onError: stop)
+
+onError: "stop"
+
+commands:
+  - echo: "Test: Exit code on error"
+  - bad-command-that-does-not-exist
+  - echo: "This should not execute"
+

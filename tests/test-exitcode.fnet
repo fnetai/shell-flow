@@ -1,0 +1,10 @@
+# Test: Exit Code Return
+# Category: Test
+# Level: Simple
+# Description: Test exitCode in return value
+
+commands:
+  - echo: "Test: Exit code return value"
+  - txt::upper::result: "hello"
+  - echo: "Result: {{$.result}}"
+

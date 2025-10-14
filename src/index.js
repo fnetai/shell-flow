@@ -94,7 +94,9 @@ import parseExpression from '@fnet/expression';
 
 /**
  * @typedef {Object} Output
+ * @property {number} exitCode - Final exit code (0 = success, non-zero = error or manual exit)
  * @property {Object.<string, CaptureResult>} [captures] - Captured outputs by captureName
+ * @property {Object} [$] - Runtime context containing builtin operation results
  * @property {Object} [error] - Last error details if any occurred
  * @property {Object[]} [errors] - Array of all errors that occurred
  */
@@ -102,7 +104,7 @@ import parseExpression from '@fnet/expression';
 /**
  * Executes shell commands with flexible execution modes and error handling.
  * @param {Input} args - The configuration object
- * @returns {Promise<Output|undefined>} Command execution results if any output was captured
+ * @returns {Promise<Output>} Command execution results including exitCode, captures, and runtime context ($)
  * @throws {Error} When command execution fails and onError is "throw"
  */
 export default async function ({
@@ -685,15 +687,22 @@ export default async function ({
 
     await Promise.all(processPromises);
 
-    // Return capture data + runtime context ($)
-    const result = Object.keys(capture).length ? capture : {};
+    // Return capture data + runtime context ($) + exit code
+    const result = {
+      exitCode: process.exitCode || 0
+    };
+
+    // Add capture data if any
+    if (Object.keys(capture).length > 0) {
+      Object.assign(result, capture);
+    }
 
     // Always include runtime context ($) if it has data
     if (Object.keys(runtimeContext).length > 0) {
       result.$ = runtimeContext;
     }
 
-    return Object.keys(result).length > 0 ? result : undefined;
+    return result;
   } catch (error) {
     // Make sure to terminate all processes even if an error occurs
     // console.error(`Error in shell-flow execution: ${error.message}`);

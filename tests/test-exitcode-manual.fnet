@@ -1,0 +1,11 @@
+# Test: Manual Exit Code
+# Category: Test
+# Level: Simple
+# Description: Test manual exit code with exit command
+
+commands:
+  - echo: "Test: Manual exit code"
+  - txt::upper::result: "hello"
+  - exit: 42
+  - echo: "This should not execute"
+

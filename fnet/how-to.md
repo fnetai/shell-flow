@@ -33,6 +33,7 @@ yarn add @fnet/shell-flow
 
 ### Advanced Features
 
+- **Exit Code Management** - Always returns exit code for proper shell orchestration and CI/CD integration
 - **Runtime Context ($)** - Dedicated namespace for builtin results, prevents naming collisions
 - **Template Variables** - Dynamic value substitution with `{{variable}}` syntax
 - **Error Handling** - Customizable policies: stop, continue, throw
@@ -83,6 +84,27 @@ yarn add @fnet/shell-flow
     maxDelay?: number;
     codes?: number[];
   };
+}
+```
+
+### Output
+
+The library returns a result object containing execution metadata and captured data:
+
+```typescript
+{
+  exitCode: number;                          // Final exit code (0 = success, non-zero = error/manual exit)
+  $?: Record<string, any>;                   // Runtime context with builtin operation results
+  [captureName]?: {                          // Captured command outputs (if any)
+    items: CaptureResult[];
+  };
+  error?: {                                  // Last error details (if any)
+    message: string;
+    command: string;
+    code: number;
+    onError: string;
+  };
+  errors?: Array<{...}>;                     // All errors that occurred
 }
 ```
 
@@ -883,6 +905,103 @@ The exit command will:
 2. Wait for processes to clean up (with 5s timeout)
 3. Exit with the specified code (0-127)
 
+## Exit Code Handling
+
+The library always returns an `exitCode` property that reflects the final execution status. This is **critical** for shell orchestration and CI/CD pipelines.
+
+### Exit Code Scenarios
+
+#### 1. Successful Execution (exitCode: 0)
+
+```javascript
+const result = await shellFlow({
+  commands: [
+    'echo "Test 1"',
+    'echo "Test 2"'
+  ]
+});
+
+console.log(result.exitCode);  // 0 (success)
+console.log(result.$);          // Runtime context with builtin results
+```
+
+#### 2. Command Failure with `onError: "stop"` (default)
+
+```javascript
+const result = await shellFlow({
+  onError: 'stop',  // Default policy
+  commands: [
+    'echo "Test 1"',
+    'bad-command',      // ← Fails with exit code 127
+    'echo "Test 2"'     // ← Never executes
+  ]
+});
+
+console.log(result.exitCode);  // 127 (command not found)
+console.log(result.error);      // { message, command, code: 127, onError: 'stop' }
+```
+
+**Important:** With `onError: "stop"`, execution halts at the first error and the exit code is set to the failing command's exit code.
+
+#### 3. Command Failure with `onError: "continue"`
+
+```javascript
+const result = await shellFlow({
+  onError: 'continue',
+  commands: [
+    'echo "Test 1"',
+    'bad-command',      // ← Fails but execution continues
+    'echo "Test 2"'     // ← Still executes
+  ]
+});
+
+console.log(result.exitCode);  // 0 (continue policy ignores errors)
+console.log(result.errors);     // Array of all errors that occurred
+```
+
+**Important:** With `onError: "continue"`, errors are collected but the exit code remains 0.
+
+#### 4. Manual Exit Code
+
+```javascript
+const result = await shellFlow({
+  commands: [
+    'echo "Running tests..."',
+    { exit: 42 },       // ← Manual exit code
+    'echo "Never runs"'
+  ]
+});
+
+console.log(result.exitCode);  // 42 (manual exit)
+```
+
+**Important:** The `exit` command accepts values 0-127 and immediately terminates execution after cleaning up all processes.
+
+### Using Exit Codes in Parent Processes
+
+The exit code is designed to be used by parent processes (like Flownet CLI or CI/CD systems):
+
+```javascript
+// In your orchestration tool or CI/CD pipeline
+const result = await shellFlow({ commands: [...] });
+
+// Set the process exit code based on shell-flow result
+process.exitCode = result.exitCode;
+
+// Or exit immediately
+process.exit(result.exitCode);
+```
+
+### Exit Code Summary
+
+| Scenario | Exit Code | Execution Behavior |
+|----------|-----------|-------------------|
+| All commands succeed | `0` | Normal completion |
+| Command fails + `onError: "stop"` | Command's exit code (e.g., `127`) | Stops at first error |
+| Command fails + `onError: "continue"` | `0` | Continues, collects errors |
+| Manual `exit: N` | `N` (0-127) | Immediate termination |
+| `onError: "throw"` | N/A | Throws exception |
+
 ## Error Handling
 
 ```javascript
@@ -941,18 +1060,19 @@ await shellFlow({
 
 ## Best Practices
 
-1. **Use expression syntax for builtin operations** - Leverage `json::`, `http::`, `file::`, `txt::`, etc. instead of shell commands
-2. **Access builtin results via `$.name`** - Runtime context prevents naming collisions
-3. **Use appropriate error handling policy** - Choose `stop`, `continue`, or `throw` based on your use case
-4. **Capture output when needed** - Use `capture::name` for command output processing
-5. **Use script mode for shell-specific features** - Enable `useScript: true` for complex shell scripts
-6. **Group related commands** - Use `steps` to organize sequential operations
-7. **Set environment variables at the most specific scope** - Apply `env` at command, group, or global level
-8. **Use working directory correctly** - Set `wdir` to ensure proper command context
-9. **Use `fork` for background processes** - Long-running services should run in background
-10. **Use `parallel` for concurrent tasks** - Execute independent tasks simultaneously
-11. **Compose expressions for complex workflows** - Nest `retry::`, `capture::`, and other expressions
-12. **Use template variables for dynamic values** - Leverage `{{variable}}` syntax with context
+1. **Always check the exit code** - Use `result.exitCode` to determine execution success in parent processes
+2. **Use expression syntax for builtin operations** - Leverage `json::`, `http::`, `file::`, `txt::`, etc. instead of shell commands
+3. **Access builtin results via `$.name`** - Runtime context prevents naming collisions
+4. **Use appropriate error handling policy** - Choose `stop`, `continue`, or `throw` based on your use case
+5. **Capture output when needed** - Use `capture::name` for command output processing
+6. **Use script mode for shell-specific features** - Enable `useScript: true` for complex shell scripts
+7. **Group related commands** - Use `steps` to organize sequential operations
+8. **Set environment variables at the most specific scope** - Apply `env` at command, group, or global level
+9. **Use working directory correctly** - Set `wdir` to ensure proper command context
+10. **Use `fork` for background processes** - Long-running services should run in background
+11. **Use `parallel` for concurrent tasks** - Execute independent tasks simultaneously
+12. **Compose expressions for complex workflows** - Nest `retry::`, `capture::`, and other expressions
+13. **Use template variables for dynamic values** - Leverage `{{variable}}` syntax with context
 
 ## Limitations
 

@@ -86,6 +86,11 @@ commands:
   test-time:
     - fnode cli --config builtin-09-time
 
+  test-exitcode:
+    - fnode cli --config test-exitcode
+    - fnode cli --config test-exitcode-error || true
+    - fnode cli --config test-exitcode-manual || true
+
   test-complex:
     - fnode cli --config complex-01-mixed-execution
     - fnode cli --config complex-02-full-features
@@ -117,4 +122,5 @@ commands:
     - frun test-http
     - frun test-encode
     - frun test-time
+    - frun test-exitcode
     - frun test-complex
