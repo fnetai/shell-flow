@@ -15,7 +15,34 @@ import {
   executePause,
   executeJsonParse,
   executeJsonStringify,
-  executeJsonGet
+  executeJsonGet,
+  executeTransformUppercase,
+  executeTransformLowercase,
+  executeTransformTrim,
+  executeTransformReplace,
+  executeTransformSplit,
+  executeTransformJoin,
+  executeFileRead,
+  executeFileWrite,
+  executeFileExists,
+  executeFileDelete,
+  executeFileCopy,
+  executeFileList,
+  executeHttpGet,
+  executeHttpPost,
+  executeHttpPut,
+  executeHttpDelete,
+  executeEncodeBase64,
+  executeDecodeBase64,
+  executeEncodeUrl,
+  executeDecodeUrl,
+  executeHashSha256,
+  executeHashMd5,
+  executeTimeNow,
+  executeTimeFormat,
+  executeTimeParse,
+  executeTimeAdd,
+  executeTimeDiff
 } from './executors/index.js';
 
 // Import expression parser
@@ -257,16 +284,13 @@ export default async function ({
                 }
                 else if (parsed.processor === 'json') {
                   // Format: json::<operation>::<contextName>
-                  // Statement contains: <operation>::<contextName>
                   const colonIndex = parsed.statement.indexOf('::');
                   if (colonIndex !== -1) {
                     const operation = parsed.statement.substring(0, colonIndex).trim();
                     const contextName = parsed.statement.substring(colonIndex + 2).trim();
 
-                    // Execute JSON builtin and mark as handled
                     if (operation === 'parse') {
                       await executeJsonParse(nestedCommand, contextName, fullContext, runtimeContext);
-                      // Mark as handled - will skip normal command execution below
                       nestedCommand = null;
                     } else if (operation === 'stringify') {
                       await executeJsonStringify(nestedCommand, contextName, fullContext, runtimeContext);
@@ -277,10 +301,195 @@ export default async function ({
                     } else {
                       throw new Error(`Unknown JSON operation: ${operation}. Supported: parse, stringify, get`);
                     }
-
-                    break; // json is terminal
+                    break;
                   } else {
                     throw new Error(`Invalid json expression format. Expected: json::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'transform') {
+                  // Format: transform::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'uppercase') {
+                      await executeTransformUppercase(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'lowercase') {
+                      await executeTransformLowercase(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'trim') {
+                      await executeTransformTrim(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'replace') {
+                      await executeTransformReplace(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'split') {
+                      await executeTransformSplit(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'join') {
+                      await executeTransformJoin(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown transform operation: ${operation}. Supported: uppercase, lowercase, trim, replace, split, join`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid transform expression format. Expected: transform::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'file') {
+                  // Format: file::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'read') {
+                      await executeFileRead(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'write') {
+                      await executeFileWrite(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'exists') {
+                      await executeFileExists(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'delete') {
+                      await executeFileDelete(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'copy') {
+                      await executeFileCopy(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'list') {
+                      await executeFileList(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown file operation: ${operation}. Supported: read, write, exists, delete, copy, list`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid file expression format. Expected: file::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'http') {
+                  // Format: http::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'get') {
+                      await executeHttpGet(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'post') {
+                      await executeHttpPost(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'put') {
+                      await executeHttpPut(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'delete') {
+                      await executeHttpDelete(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown http operation: ${operation}. Supported: get, post, put, delete`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid http expression format. Expected: http::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'encode') {
+                  // Format: encode::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'base64') {
+                      await executeEncodeBase64(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'url') {
+                      await executeEncodeUrl(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown encode operation: ${operation}. Supported: base64, url`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid encode expression format. Expected: encode::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'decode') {
+                  // Format: decode::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'base64') {
+                      await executeDecodeBase64(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'url') {
+                      await executeDecodeUrl(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown decode operation: ${operation}. Supported: base64, url`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid decode expression format. Expected: decode::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'hash') {
+                  // Format: hash::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'sha256') {
+                      await executeHashSha256(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'md5') {
+                      await executeHashMd5(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown hash operation: ${operation}. Supported: sha256, md5`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid hash expression format. Expected: hash::<operation>::<contextName>`);
+                  }
+                }
+                else if (parsed.processor === 'time') {
+                  // Format: time::<operation>::<contextName>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex !== -1) {
+                    const operation = parsed.statement.substring(0, colonIndex).trim();
+                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
+
+                    if (operation === 'now') {
+                      await executeTimeNow(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'format') {
+                      await executeTimeFormat(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'parse') {
+                      await executeTimeParse(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'add') {
+                      await executeTimeAdd(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else if (operation === 'diff') {
+                      await executeTimeDiff(nestedCommand, contextName, fullContext, runtimeContext);
+                      nestedCommand = null;
+                    } else {
+                      throw new Error(`Unknown time operation: ${operation}. Supported: now, format, parse, add, diff`);
+                    }
+                    break;
+                  } else {
+                    throw new Error(`Invalid time expression format. Expected: time::<operation>::<contextName>`);
                   }
                 }
                 else {

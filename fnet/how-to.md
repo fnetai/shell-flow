@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@fnet/shell-flow` library provides developers with a streamlined way to execute shell commands in sequence, parallel, or as background processes. It offers robust error handling, output capture, and environment management capabilities.
+The `@fnet/shell-flow` library provides developers with a powerful, expression-based shell command orchestration system. Execute shell commands in sequence, parallel, or as background processes with built-in support for JSON operations, HTTP requests, file management, data transformations, and more. All builtin operations write to a dedicated runtime context (`$`) for clean, collision-free data management.
 
 ## Installation
 
@@ -11,6 +11,34 @@ npm install @fnet/shell-flow
 # or
 yarn add @fnet/shell-flow
 ```
+
+## Key Features
+
+### Core Execution Modes
+
+- **Sequential Command Execution** - Run commands one after the other
+- **Parallel Command Execution** - Execute multiple commands simultaneously
+- **Background Execution (Fork)** - Run long-running processes in background
+- **Script Mode** - Execute commands in a single shell session
+
+### Expression-Based Builtins
+
+- **JSON Operations** - Parse, stringify, and extract JSON data (`json::parse`, `json::get`)
+- **HTTP Requests** - Make GET, POST, PUT, DELETE requests (`http::get`, `http::post`)
+- **File Operations** - Read, write, copy, delete files (`file::read`, `file::write`)
+- **String Transformations** - Uppercase, lowercase, trim, replace, split, join (`transform::*`)
+- **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
+- **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
+- **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
+
+### Advanced Features
+
+- **Runtime Context ($)** - Dedicated namespace for builtin results, prevents naming collisions
+- **Template Variables** - Dynamic value substitution with `{{variable}}` syntax
+- **Error Handling** - Customizable policies: stop, continue, throw
+- **Output Capture** - Store and access command outputs for processing
+- **Environment Management** - Flexible environment variable configuration
+- **Composable Expressions** - Nest expressions for complex workflows
 
 ## Core Types
 
@@ -22,7 +50,7 @@ yarn add @fnet/shell-flow
   parallel?: string[];        // Array of parallel commands
   fork?: string[];            // Array of background commands
   filemap?: object;           // Filemap configuration object
-  onError?: "stop" | "continue" | "log" | "throw";  // Error handling policy
+  onError?: "stop" | "continue" | "throw";  // Error handling policy
   env?: Record<string, any>;  // Environment variables
   wdir?: string;              // Working directory
   captureName?: string;       // Name to capture output
@@ -44,7 +72,7 @@ yarn add @fnet/shell-flow
   commands?: (string | CommandGroup)[];  // Sequential commands
   parallel?: (string | CommandGroup)[];  // Parallel commands
   fork?: (string | CommandGroup)[];      // Background commands
-  onError?: "stop" | "continue" | "log" | "throw";  // Global error policy
+  onError?: "stop" | "continue" | "throw";  // Global error policy
   env?: Record<string, any>;             // Global environment variables
   wdir?: string;                         // Global working directory (defaults to process.cwd())
   context?: Record<string, any>;         // Template context object
@@ -230,6 +258,61 @@ await shellFlow({
   ]
 });
 ```
+
+## Expression Syntax
+
+The library supports powerful expression-based commands using the `processor::operation::contextName` syntax. Expressions enable advanced operations like JSON parsing, HTTP requests, file operations, and more - all with automatic result storage in the runtime context (`$`).
+
+### Basic Expression Format
+
+```yaml
+commands:
+  - capture::logs: npm run test
+  - retry::3: curl https://api.example.com
+  - json::parse::data: "{{response}}"
+  - transform::uppercase::result: "hello world"
+```
+
+### Composable Expressions
+
+Expressions can be nested for powerful workflows:
+
+```yaml
+commands:
+  - retry::3:
+      capture::logs: npm run test
+  - json::parse::data: "{{logs.items[0].stdout}}"
+  - echo: "Status: {{$.data.status}}"
+```
+
+### Runtime Context ($)
+
+All expression-based builtins write their results to the **runtime context** (`$`), which is separate from user-defined context variables. This prevents naming collisions and provides a clean namespace for builtin results.
+
+```javascript
+const result = await shellFlow({
+  commands: [
+    { 'http::get::response': 'https://api.example.com/users' },
+    { 'json::parse::users': '{{$.response.body}}' },
+    { echo: 'First user: {{$.users[0].name}}' }
+  ]
+});
+
+// Result includes both capture data and runtime context
+console.log(result);
+// {
+//   $: {
+//     response: { status: 200, body: "..." },
+//     users: [{ name: "John" }, ...]
+//   }
+// }
+```
+
+**Key Points:**
+
+- User context: `{{varName}}`
+- Runtime context: `{{$.varName}}`
+- Final result always includes `$` object with all builtin results
 
 ## Template Variables
 
@@ -454,6 +537,308 @@ The `pause` command can be used in two ways:
 
 Control commands must contain only their respective key (`echo`, `sleep`, `exit`, `pause`, or `filemap`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
 
+## Expression-Based Builtins
+
+The library provides powerful expression-based builtins that write results to the runtime context (`$`). All builtins follow the format: `processor::operation::contextName: input`
+
+### Capture Expression
+
+Capture command output to runtime context:
+
+```javascript
+await shellFlow({
+  commands: [
+    { 'capture::logs': 'npm run test' },
+    { echo: 'Test output: {{$.logs.items[0].stdout}}' }
+  ]
+});
+```
+
+### Retry Expression
+
+Retry commands with automatic backoff:
+
+```javascript
+await shellFlow({
+  commands: [
+    { 'retry::3': 'curl https://api.example.com' },
+    { 'retry::5': {
+        'capture::response': 'curl https://api.example.com'
+      }
+    }
+  ]
+});
+```
+
+### JSON Operations
+
+Parse, stringify, and extract JSON data:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Parse JSON string
+    { 'json::parse::data': '{"user":{"name":"John","age":30}}' },
+    { echo: 'Name: {{$.data.user.name}}' },
+
+    // Extract JSON path
+    { 'json::get::name': '$.data.user.name' },
+    { echo: 'Extracted: {{$.name}}' },
+
+    // Stringify object
+    { 'json::stringify::output': '{{$.data}}' }
+  ]
+});
+```
+
+**JSON Operations:**
+
+- `json::parse::<name>: <json_string>` - Parse JSON to object
+- `json::stringify::<name>: <object>` - Convert object to JSON string
+- `json::get::<name>: <json_path>` - Extract value using JSONPath
+
+### Transform Operations
+
+String transformation operations:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Uppercase
+    { 'transform::uppercase::upper': 'hello world' },
+    { echo: '{{$.upper}}' },  // HELLO WORLD
+
+    // Lowercase
+    { 'transform::lowercase::lower': 'HELLO WORLD' },
+
+    // Trim whitespace
+    { 'transform::trim::trimmed': '  hello  ' },
+
+    // Replace text
+    { 'transform::replace::result': {
+        input: 'hello world',
+        search: 'world',
+        replace: 'universe'
+      }
+    },
+
+    // Split string to array
+    { 'transform::split::items': {
+        input: 'a,b,c',
+        delimiter: ','
+      }
+    },
+
+    // Join array to string
+    { 'transform::join::result': {
+        input: ['a', 'b', 'c'],
+        delimiter: ','
+      }
+    }
+  ]
+});
+```
+
+**Transform Operations:**
+
+- `transform::uppercase::<name>: <text>` - Convert to uppercase
+- `transform::lowercase::<name>: <text>` - Convert to lowercase
+- `transform::trim::<name>: <text>` - Trim whitespace
+- `transform::replace::<name>: {input, search, replace}` - Replace text (supports regex)
+- `transform::split::<name>: {input, delimiter}` - Split string to array
+- `transform::join::<name>: {input, delimiter}` - Join array to string
+
+### File Operations
+
+Read, write, and manage files:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Write file
+    { 'file::write::write_result': {
+        path: '/tmp/data.txt',
+        content: 'Hello World'
+      }
+    },
+
+    // Read file
+    { 'file::read::content': '/tmp/data.txt' },
+    { echo: 'Content: {{$.content}}' },
+
+    // Check if file exists
+    { 'file::exists::check': '/tmp/data.txt' },
+    { echo: 'Exists: {{$.check}}' },
+
+    // Copy file
+    { 'file::copy::copy_result': {
+        source: '/tmp/data.txt',
+        destination: '/tmp/backup.txt'
+      }
+    },
+
+    // List directory
+    { 'file::list::files': '/tmp' },
+
+    // Delete file
+    { 'file::delete::delete_result': '/tmp/data.txt' }
+  ]
+});
+```
+
+**File Operations:**
+
+- `file::read::<name>: <path>` - Read file content
+- `file::write::<name>: {path, content}` - Write content to file
+- `file::exists::<name>: <path>` - Check if file exists (returns boolean)
+- `file::delete::<name>: <path>` - Delete file
+- `file::copy::<name>: {source, destination}` - Copy file
+- `file::list::<name>: <path>` - List directory contents
+
+### HTTP Operations
+
+Make HTTP requests:
+
+```javascript
+await shellFlow({
+  commands: [
+    // GET request
+    { 'http::get::response': 'https://api.example.com/users' },
+    { echo: 'Status: {{$.response.status}}' },
+    { echo: 'Body: {{$.response.body}}' },
+
+    // POST request
+    { 'http::post::create_result': {
+        url: 'https://api.example.com/users',
+        body: { name: 'John', email: 'john@example.com' },
+        headers: { 'Content-Type': 'application/json' }
+      }
+    },
+
+    // PUT request
+    { 'http::put::update_result': {
+        url: 'https://api.example.com/users/1',
+        body: { name: 'John Updated' }
+      }
+    },
+
+    // DELETE request
+    { 'http::delete::delete_result': 'https://api.example.com/users/1' }
+  ]
+});
+```
+
+**HTTP Operations:**
+
+- `http::get::<name>: <url>` or `{url, headers}`
+- `http::post::<name>: {url, body, headers?}`
+- `http::put::<name>: {url, body, headers?}`
+- `http::delete::<name>: <url>` or `{url, headers}`
+
+**Response Format:**
+
+```javascript
+{
+  status: 200,
+  statusText: "OK",
+  headers: { ... },
+  body: "..." // Response body as string
+}
+```
+
+### Encoding Operations
+
+Encode, decode, and hash data:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Base64 encode
+    { 'encode::base64::encoded': 'hello world' },
+    { echo: 'Encoded: {{$.encoded}}' },
+
+    // Base64 decode
+    { 'decode::base64::decoded': '{{$.encoded}}' },
+    { echo: 'Decoded: {{$.decoded}}' },
+
+    // URL encode
+    { 'encode::url::url_encoded': 'hello world' },
+    { echo: 'URL: {{$.url_encoded}}' },
+
+    // URL decode
+    { 'decode::url::url_decoded': '{{$.url_encoded}}' },
+
+    // SHA256 hash
+    { 'hash::sha256::hash': 'password123' },
+    { echo: 'Hash: {{$.hash}}' },
+
+    // MD5 hash
+    { 'hash::md5::md5_hash': 'password123' }
+  ]
+});
+```
+
+**Encoding Operations:**
+
+- `encode::base64::<name>: <text>` - Base64 encode
+- `decode::base64::<name>: <text>` - Base64 decode
+- `encode::url::<name>: <text>` - URL encode
+- `decode::url::<name>: <text>` - URL decode
+- `hash::sha256::<name>: <text>` - SHA256 hash (hex)
+- `hash::md5::<name>: <text>` - MD5 hash (hex)
+
+### Time Operations
+
+Work with timestamps and dates:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Get current timestamp
+    { 'time::now::timestamp': null },
+    { echo: 'Now: {{$.timestamp}}' },
+
+    // Format timestamp
+    { 'time::format::formatted': {
+        timestamp: '{{$.timestamp}}',
+        format: 'iso'  // iso, date, time, locale, or custom
+      }
+    },
+    { echo: 'Formatted: {{$.formatted}}' },
+
+    // Parse date string
+    { 'time::parse::parsed': '2024-10-14' },
+    { echo: 'Parsed: {{$.parsed}}' },
+
+    // Add time
+    { 'time::add::future': {
+        timestamp: '{{$.timestamp}}',
+        amount: 3600000,  // 1 hour in ms
+        unit: 'milliseconds'
+      }
+    },
+
+    // Calculate difference
+    { 'time::diff::difference': {
+        start: '{{$.timestamp}}',
+        end: '{{$.future}}',
+        unit: 'hours'
+      }
+    }
+  ]
+});
+```
+
+**Time Operations:**
+
+- `time::now::<name>:` - Get current timestamp (milliseconds)
+- `time::format::<name>: {timestamp, format}` - Format timestamp
+  - Formats: `iso`, `date`, `time`, `locale`, or custom pattern
+- `time::parse::<name>: <date_string>` - Parse date to timestamp
+- `time::add::<name>: {timestamp, amount, unit}` - Add time
+  - Units: `milliseconds`, `seconds`, `minutes`, `hours`, `days`
+- `time::diff::<name>: {start, end, unit}` - Calculate difference
+
 ## Exit Control
 
 The library supports controlled process termination using the `exit` command. The exit code can be specified directly or using template variables:
@@ -504,7 +889,7 @@ The exit command will:
 try {
   await shellFlow({
     commands: ['invalid-command'],
-    onError: 'throw'  // 'stop' | 'continue' | 'log' | 'throw'
+    onError: 'throw'  // 'stop' | 'continue' | 'throw'
   });
 } catch (error) {
   console.log(error.message);    // Error description
@@ -517,9 +902,8 @@ try {
 ### Error handling and retry examples
 
 - onError policies:
-  - stop: stop current sequence on first error in that scope
-  - continue: continue without logging
-  - log: continue; you can add your own logging around errors if desired
+  - stop: stop current sequence on first error in that scope (sets exit code)
+  - continue: continue execution, collect errors (exit code 0)
   - throw: throw immediately
 
 - retry options (global or per group):
@@ -557,14 +941,18 @@ await shellFlow({
 
 ## Best Practices
 
-1. Use appropriate error handling policy for your use case
-2. Capture output when you need to process command results
-3. Use script mode for shell-specific features
-4. Group related commands using steps
-5. Set environment variables at the most specific scope needed
-6. Use working directory to ensure correct command context
-7. Use `fork` for long-running background processes
-8. Use `parallel` for concurrent tasks that need to complete before continuing
+1. **Use expression syntax for builtin operations** - Leverage `json::`, `http::`, `file::`, etc. instead of shell commands
+2. **Access builtin results via `$.name`** - Runtime context prevents naming collisions
+3. **Use appropriate error handling policy** - Choose `stop`, `continue`, or `throw` based on your use case
+4. **Capture output when needed** - Use `capture::name` for command output processing
+5. **Use script mode for shell-specific features** - Enable `useScript: true` for complex shell scripts
+6. **Group related commands** - Use `steps` to organize sequential operations
+7. **Set environment variables at the most specific scope** - Apply `env` at command, group, or global level
+8. **Use working directory correctly** - Set `wdir` to ensure proper command context
+9. **Use `fork` for background processes** - Long-running services should run in background
+10. **Use `parallel` for concurrent tasks** - Execute independent tasks simultaneously
+11. **Compose expressions for complex workflows** - Nest `retry::`, `capture::`, and other expressions
+12. **Use template variables for dynamic values** - Leverage `{{variable}}` syntax with context
 
 ## Limitations
 

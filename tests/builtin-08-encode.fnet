@@ -1,0 +1,26 @@
+# Test: Encode Builtins
+# Category: Builtin
+# Level: Simple
+# Description: Encoding/decoding operations
+
+commands:
+  - echo: "Test: Encode builtins"
+  
+  # Base64 encode
+  - encode::base64::encoded: "hello world"
+  - echo: "Base64 encoded: {{$.encoded}}"
+  
+  # Base64 decode
+  - decode::base64::decoded: "{{$.encoded}}"
+  - echo: "Base64 decoded: {{$.decoded}}"
+  
+  # URL encode
+  - encode::url::url_encoded: "hello world"
+  - echo: "URL encoded: {{$.url_encoded}}"
+  
+  # Hash
+  - hash::sha256::hash: "password123"
+  - echo: "SHA256 hash: {{$.hash}}"
+  
+  - echo: "Encode tests completed!"
+

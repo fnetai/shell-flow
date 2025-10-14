@@ -5,7 +5,7 @@ t::py::ai::name: "fnet_shell_flow"
 
 s::repo.url: https://gitlab.com/fnetai/shell-flow.git
 
-t::nd::input: g::file://fnet/input.yaml
+# t::nd::input: g::file://fnet/input.yaml
 
 features:
   t::dev::s::runtime.type: bun

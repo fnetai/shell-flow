@@ -1,0 +1,24 @@
+# Test: Time Builtins
+# Category: Builtin
+# Level: Simple
+# Description: Time operations
+
+commands:
+  - echo: "Test: Time builtins"
+  
+  # Get current timestamp
+  - time::now::timestamp:
+  - echo: "Current timestamp: {{$.timestamp}}"
+  
+  # Format timestamp
+  - time::format::formatted:
+      timestamp: "{{$.timestamp}}"
+      format: "iso"
+  - echo: "Formatted: {{$.formatted}}"
+  
+  # Parse date
+  - time::parse::parsed: "2024-10-14"
+  - echo: "Parsed timestamp: {{$.parsed}}"
+  
+  - echo: "Time tests completed!"
+

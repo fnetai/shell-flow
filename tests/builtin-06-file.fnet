@@ -1,0 +1,28 @@
+# Test: File Builtins
+# Category: Builtin
+# Level: Medium
+# Description: File operations
+
+commands:
+  - echo: "Test: File builtins"
+  
+  # Write file
+  - file::write::write_result:
+      path: /tmp/shell-flow-test.txt
+      content: "Hello from shell-flow!"
+  - echo: "File written: {{$.write_result.success}}"
+  
+  # Read file
+  - file::read::content: /tmp/shell-flow-test.txt
+  - echo: "File content: {{$.content}}"
+  
+  # Check exists
+  - file::exists::exists: /tmp/shell-flow-test.txt
+  - echo: "File exists: {{$.exists}}"
+  
+  # Delete file
+  - file::delete::delete_result: /tmp/shell-flow-test.txt
+  - echo: "File deleted: {{$.delete_result.deleted}}"
+  
+  - echo: "File tests completed!"
+

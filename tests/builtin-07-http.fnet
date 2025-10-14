@@ -1,0 +1,15 @@
+# Test: HTTP Builtins
+# Category: Builtin
+# Level: Medium
+# Description: HTTP operations
+
+commands:
+  - echo: "Test: HTTP builtins"
+  
+  # HTTP GET
+  - http::get::response: https://httpbin.org/get
+  - echo: "HTTP Status: {{$.response.status}}"
+  - echo: "Response received!"
+  
+  - echo: "HTTP tests completed!"
+
