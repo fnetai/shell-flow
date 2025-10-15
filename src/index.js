@@ -149,6 +149,9 @@ export default async function ({
 
       for (let cmd of commands) {
         try {
+          // Store original command before template processing (needed for json::stringify)
+          const originalCmd = cmd;
+
           // Process templates with current context (includes runtime $ context)
           cmd = processTemplates(cmd, fullContext);
 
@@ -295,7 +298,9 @@ export default async function ({
                       await executeJsonParse(nestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'stringify') {
-                      await executeJsonStringify(nestedCommand, contextName, fullContext, runtimeContext);
+                      // For stringify, use original command to avoid template processing issues
+                      const originalNestedCommand = typeof originalCmd === 'object' && originalCmd[expressionKey] ? originalCmd[expressionKey] : nestedCommand;
+                      await executeJsonStringify(originalNestedCommand, contextName, fullContext, runtimeContext);
                       nestedCommand = null;
                     } else if (operation === 'get') {
                       await executeJsonGet(nestedCommand, contextName, fullContext, runtimeContext);

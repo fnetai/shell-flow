@@ -1,0 +1,110 @@
+# Test: JSON Builtins
+# Category: Builtin
+# Level: Medium
+# Description: Complete JSON operations (parse, stringify, get)
+
+commands:
+  - echo: "Test: JSON builtins - All operations"
+  
+  # ===== JSON PARSE =====
+  - echo: "1. Testing JSON PARSE..."
+  
+  # Parse simple JSON
+  - json::parse::simple_data: '{"name":"John","age":30,"active":true}'
+  - echo: "Simple parse - Name: {{$.simple_data.name}}"
+  - echo: "Simple parse - Age: {{$.simple_data.age}}"
+  - echo: "Simple parse - Active: {{$.simple_data.active}}"
+  
+  # Parse complex nested JSON
+  - json::parse::complex_data: '{"user":{"id":123,"profile":{"name":"John Doe","email":"john@example.com","settings":{"theme":"dark","notifications":true}},"roles":["admin","user"],"metadata":{"created":"2024-01-01","lastLogin":null}},"status":"active","version":1.2}'
+  - echo: "Complex parse - User ID: {{$.complex_data.user.id}}"
+  - echo: "Complex parse - Email: {{$.complex_data.user.profile.email}}"
+  - echo: "Complex parse - Theme: {{$.complex_data.user.profile.settings.theme}}"
+  - echo: "Complex parse - First role: {{$.complex_data.user.roles.0}}"
+  
+  # Parse array JSON
+  - json::parse::array_data: '[{"id":1,"name":"Item 1"},{"id":2,"name":"Item 2"},{"id":3,"name":"Item 3"}]'
+  - echo: "Array parse - First item: {{$.array_data.0.name}}"
+  - echo: "Array parse - Second item: {{$.array_data.1.name}}"
+  
+  # ===== JSON GET =====
+  - echo: "2. Testing JSON GET..."
+  
+  # Get simple values
+  - json::get::user_name: "$.complex_data.user.profile.name"
+  - echo: "GET user name: {{$.user_name}}"
+  
+  - json::get::user_email: "$.complex_data.user.profile.email"
+  - echo: "GET user email: {{$.user_email}}"
+  
+  - json::get::theme_setting: "$.complex_data.user.profile.settings.theme"
+  - echo: "GET theme: {{$.theme_setting}}"
+  
+  # Get array elements
+  - json::get::first_role: "$.complex_data.user.roles.0"
+  - echo: "GET first role: {{$.first_role}}"
+  
+  - json::get::second_role: "$.complex_data.user.roles.1"
+  - echo: "GET second role: {{$.second_role}}"
+  
+  # Get from array data
+  - json::get::first_item_name: "$.array_data.0.name"
+  - echo: "GET first item name: {{$.first_item_name}}"
+  
+  # ===== JSON STRINGIFY =====
+  - echo: "3. Testing JSON STRINGIFY..."
+  
+  # Stringify simple object
+  - json::stringify::simple_json: "{{$.simple_data}}"
+  - echo: "Stringify simple:"
+  - echo: "{{$.simple_json}}"
+  
+  # Stringify complex object
+  - json::stringify::complex_json: "{{$.complex_data.user.profile}}"
+  - echo: "Stringify profile:"
+  - echo: "{{$.complex_json}}"
+  
+  # Stringify array
+  - json::stringify::array_json: "{{$.array_data}}"
+  - echo: "Stringify array:"
+  - echo: "{{$.array_json}}"
+  
+  # ===== ROUND-TRIP TEST =====
+  - echo: "4. Testing ROUND-TRIP (parse -> stringify -> parse)..."
+  
+  # Original data
+  - json::parse::original: '{"test":"round-trip","number":42,"nested":{"value":true}}'
+  - echo: "Original: {{$.original.test}} - {{$.original.number}}"
+  
+  # Stringify it
+  - json::stringify::stringified: "{{$.original}}"
+  - echo: "Stringified length: {{$.stringified.length}} characters"
+  
+  # Parse it back
+  - json::parse::round_trip: "{{$.stringified}}"
+  - echo: "Round-trip: {{$.round_trip.test}} - {{$.round_trip.number}}"
+  - echo: "Round-trip nested: {{$.round_trip.nested.value}}"
+  
+  # ===== TEMPLATE INTEGRATION =====
+  - echo: "5. Testing TEMPLATE INTEGRATION..."
+  
+  # Use context variables in JSON operations
+  - json::parse::template_data: '{"env":"{{env}}","user":"{{user_name}}","timestamp":"{{timestamp}}"}'
+  - echo: "Template parse - Env: {{$.template_data.env}}"
+  - echo: "Template parse - User: {{$.template_data.user}}"
+  - echo: "Template parse - Timestamp: {{$.template_data.timestamp}}"
+  
+  # ===== VALIDATION =====
+  - echo: "6. Validating all results..."
+  - echo: "Simple data name: {{$.simple_data.name}} (Expected: John)"
+  - echo: "Complex user ID: {{$.complex_data.user.id}} (Expected: 123)"
+  - echo: "Array first item: {{$.array_data.0.name}} (Expected: Item 1)"
+  - echo: "GET user name: {{$.user_name}} (Expected: John Doe)"
+  - echo: "Round-trip test: {{$.round_trip.test}} (Expected: round-trip)"
+  
+  - echo: "✅ All JSON tests completed successfully!"
+
+context:
+  env: "production"
+  user_name: "Test User"
+  timestamp: "2024-10-15T18:00:00Z"

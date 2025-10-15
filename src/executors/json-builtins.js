@@ -41,15 +41,35 @@ export async function executeJsonParse(input, contextName, context, runtimeConte
  */
 export async function executeJsonStringify(input, contextName, context, runtimeContext) {
   try {
-    // Process any templates in the input
-    const processedInput = processTemplates(input, context);
-    
+    let processedInput;
+
+    // Special handling for template references to objects
+    // Check if input is a template that references an object in context
+    if (typeof input === 'string' && input.match(/^\{\{\$\.([^}]+)\}\}$/)) {
+      // Extract the path from the template
+      const templateMatch = input.match(/^\{\{\$\.([^}]+)\}\}$/);
+      const path = templateMatch[1];
+      const parts = path.split('.');
+      let value = context.$;
+
+      for (const part of parts) {
+        if (value === null || value === undefined) {
+          throw new Error(`Cannot read property '${part}' of ${value}`);
+        }
+        value = value[part];
+      }
+      processedInput = value;
+    } else {
+      // For non-template inputs or complex templates, use normal processing
+      processedInput = processTemplates(input, context);
+    }
+
     // Stringify to JSON
     const stringified = JSON.stringify(processedInput, null, 2);
-    
+
     // Write to runtime context ($)
     runtimeContext[contextName] = stringified;
-    
+
     // console.log(`JSON stringified and stored in $.${contextName}`);
   } catch (error) {
     throw new ShellError(`JSON stringify failed: ${error.message}`, 'json::stringify', 1);

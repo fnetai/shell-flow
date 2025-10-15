@@ -1,15 +1,82 @@
 # Test: HTTP Builtins
 # Category: Builtin
 # Level: Medium
-# Description: HTTP operations
+# Description: Complete HTTP operations (GET, POST, PUT, DELETE)
 
 commands:
-  - echo: "Test: HTTP builtins"
-  
-  # HTTP GET
-  - http::get::response: https://httpbin.org/get
-  - echo: "HTTP Status: {{$.response.status}}"
-  - echo: "Response received!"
-  
-  - echo: "HTTP tests completed!"
+  - echo: "Test: HTTP builtins - All methods"
+
+  # ===== HTTP GET =====
+  - echo: "1. Testing HTTP GET..."
+  - http::get::get_response: https://httpbin.org/get
+  - echo: "GET Status: {{$.get_response.status}}"
+  - echo: "GET Response received!"
+
+  # HTTP GET with headers
+  - echo: "2. Testing HTTP GET with headers..."
+  - http::get::get_with_headers:
+      url: https://httpbin.org/get
+      headers:
+        User-Agent: "shell-flow-test"
+        X-Test-Header: "test-value"
+  - echo: "GET with headers Status: {{$.get_with_headers.status}}"
+
+  # ===== HTTP POST =====
+  - echo: "3. Testing HTTP POST..."
+  - http::post::post_response:
+      url: https://httpbin.org/post
+      body:
+        name: "John Doe"
+        email: "john@example.com"
+        test: true
+      headers:
+        X-Test-Header: "post-test"
+  - echo: "POST Status: {{$.post_response.status}}"
+  - echo: "POST Response received!"
+
+  # HTTP POST with string body
+  - echo: "4. Testing HTTP POST with string body..."
+  - http::post::post_string:
+      url: https://httpbin.org/post
+      body: "This is a plain text body"
+      headers:
+        Content-Type: "text/plain"
+  - echo: "POST String Status: {{$.post_string.status}}"
+
+  # ===== HTTP PUT =====
+  - echo: "5. Testing HTTP PUT..."
+  - http::put::put_response:
+      url: https://httpbin.org/put
+      body:
+        id: 123
+        name: "Updated Name"
+        status: "active"
+      headers:
+        X-Update-Header: "put-test"
+  - echo: "PUT Status: {{$.put_response.status}}"
+  - echo: "PUT Response received!"
+
+  # ===== HTTP DELETE =====
+  - echo: "6. Testing HTTP DELETE (simple URL)..."
+  - http::delete::delete_response: https://httpbin.org/delete
+  - echo: "DELETE Status: {{$.delete_response.status}}"
+  - echo: "DELETE Response received!"
+
+  # HTTP DELETE with headers
+  - echo: "7. Testing HTTP DELETE with headers..."
+  - http::delete::delete_with_headers:
+      url: https://httpbin.org/delete
+      headers:
+        Authorization: "Bearer test-token"
+        X-Delete-Reason: "cleanup"
+  - echo: "DELETE with headers Status: {{$.delete_with_headers.status}}"
+
+  # ===== RESPONSE VALIDATION =====
+  - echo: "8. Validating all responses..."
+  - echo: "GET Status: {{$.get_response.status}} (Expected: 200)"
+  - echo: "POST Status: {{$.post_response.status}} (Expected: 200)"
+  - echo: "PUT Status: {{$.put_response.status}} (Expected: 200)"
+  - echo: "DELETE Status: {{$.delete_response.status}} (Expected: 200)"
+
+  - echo: "✅ All HTTP tests completed successfully!"
 
