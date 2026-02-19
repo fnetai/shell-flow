@@ -1082,4 +1082,4 @@ await shellFlow({
 
 ## Support
 
-For issues and feature requests, please visit our repository at [GitLab](https://gitlab.com/fnetai/shell-flow).
+For issues and feature requests, please visit our repository at [GitHub](https://github.com/fnetai/shell-flow).

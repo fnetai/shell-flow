@@ -3,7 +3,7 @@ name: shell-flow
 ai::name: "@fnet/shell-flow"
 t::py::ai::name: "fnet_shell_flow"
 
-s::repo.url: https://gitlab.com/fnetai/shell-flow.git
+s::repo.url: https://github.com/fnetai/shell-flow.git
 
 # t::nd::input: g::file://fnet/input.yaml
 
