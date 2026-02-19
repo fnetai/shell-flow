@@ -88,6 +88,7 @@ commands:
     - fnode cli --config expression-02-retry
     - fnode cli --config expression-03-composable
     - fnode cli --config expression-04-json
+    - fnode cli --config expression-05-each
 
   test-txt:
     - fnode cli --config builtin-05-txt

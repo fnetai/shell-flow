@@ -1,0 +1,63 @@
+# Test: each:: Expression
+# Category: Expression
+# Level: Medium
+# Description: Iterate over arrays using each:: expression
+
+commands:
+  - echo: "Test: each:: expression - Array iteration"
+
+  # ===== BASIC ITERATION =====
+  - echo: "1. Basic iteration over parsed JSON array..."
+
+  - json::parse::services: '[{"name":"api","port":3001},{"name":"web","port":3002},{"name":"worker","port":3003}]'
+  - each::service::$.services:
+      - echo: "Service: {{service.name}} on port {{service.port}}"
+
+  # ===== SIMPLE STRING ARRAY =====
+  - echo: "2. Iteration over simple string array..."
+
+  - json::parse::colors: '["red","green","blue"]'
+  - each::color::$.colors:
+      - echo: "Color: {{color}}"
+
+  # ===== NESTED PROPERTY ACCESS =====
+  - echo: "3. Nested property access inside loop..."
+
+  - json::parse::users: '[{"id":1,"profile":{"name":"Alice","role":"admin"}},{"id":2,"profile":{"name":"Bob","role":"user"}}]'
+  - each::user::$.users:
+      - echo: "User {{user.id}}: {{user.profile.name}} ({{user.profile.role}})"
+
+  # ===== MULTIPLE COMMANDS IN LOOP BODY =====
+  - echo: "4. Multiple commands in loop body..."
+
+  - json::parse::tasks: '[{"name":"build","cmd":"echo building"},{"name":"test","cmd":"echo testing"}]'
+  - each::task::$.tasks:
+      - echo: "--- Task: {{task.name}} ---"
+      - echo: "Running: {{task.cmd}}"
+
+  # ===== EMPTY ARRAY =====
+  - echo: "5. Empty array - should not iterate..."
+
+  - json::parse::empty_list: '[]'
+  - each::item::$.empty_list:
+      - echo: "THIS SHOULD NOT APPEAR"
+  - echo: "Empty array handled correctly (nothing printed above)"
+
+  # ===== BUILTIN INSIDE LOOP =====
+  - echo: "6. Builtin expressions inside loop..."
+
+  - json::parse::words: '[{"value":"hello"},{"value":"world"}]'
+  - each::word::$.words:
+      - txt::upper::uppercased: "{{word.value}}"
+      - echo: "Uppercased: {{$.uppercased}}"
+
+  # ===== CAPTURE INSIDE LOOP =====
+  - echo: "7. capture:: inside loop body..."
+
+  - json::parse::steps: '[{"cmd":"echo step-one"},{"cmd":"echo step-two"}]'
+  - each::step::$.steps:
+      - capture::step_out::{{step.cmd}}
+      - echo: "Captured: {{$.step_out.items.0.stdout}}"
+
+  - echo: "Test: each:: expression - DONE"
+

@@ -30,6 +30,7 @@ yarn add @fnet/shell-flow
 - **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
 - **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
+- **Array Iteration** - Loop over parsed arrays and run commands per item (`each::`)
 
 ### Advanced Features
 
@@ -595,6 +596,36 @@ await shellFlow({
   ]
 });
 ```
+
+### Each Expression
+
+Iterate over arrays and run a block of commands for each item. The current item is injected into the template context under the name you choose.
+
+**Syntax:** `each::<itemName>::<arrayPath>`
+
+```javascript
+await shellFlow({
+  commands: [
+    { 'json::parse::services': '[{"name":"api","port":3001},{"name":"web","port":3002}]' },
+    { 'each::service::$.services': [
+        { echo: 'Deploying {{service.name}} on port {{service.port}}...' },
+        'npm run deploy -- --service={{service.name}}'
+      ]
+    }
+  ]
+});
+// Output:
+// Deploying api on port 3001...
+// Deploying web on port 3002...
+```
+
+**Key behaviors:**
+- The array must already be resolved in the runtime context (`$`) or user context
+- Each item is available as `{{itemName}}` (or `{{itemName.property}}` for objects) inside the body
+- An empty array is a no-op — the body is simply skipped
+- All builtins (`txt::`, `json::`, `capture::`, etc.) work inside the loop body
+- `onError` policy applies per-iteration, consistent with the rest of the pipeline
+- Loop-scoped variables do not leak outside the `each::` block
 
 ### JSON Operations
 
