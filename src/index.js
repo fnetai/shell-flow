@@ -242,8 +242,13 @@ export default async function ({
   // Create a CommandRunner that holds processManager and provides methods
   const runner = {
     processManager,
-    async processCommands(commands, onError, env, wdir, captureName, captureRoot, retryConfig = globalRetryConfig) {
+    async processCommands(commands, onError, env, wdir, captureName, captureRoot, retryConfig = globalRetryConfig, loopContext = {}) {
       const capture = captureName ? { items: [] } : undefined;
+
+      // Merge loop variables (if any) into the shared context for this invocation
+      const effectiveContext = Object.keys(loopContext).length > 0
+        ? { ...fullContext, ...loopContext }
+        : fullContext;
 
       for (let cmd of commands) {
         try {
@@ -251,7 +256,7 @@ export default async function ({
           const originalCmd = cmd;
 
           // Process templates with current context (includes runtime $ context)
-          cmd = processTemplates(cmd, fullContext);
+          cmd = processTemplates(cmd, effectiveContext);
 
           if (typeof cmd === 'string') {
             // Check if command uses expression syntax (processor::statement)
@@ -372,11 +377,43 @@ export default async function ({
                     throw new Error(`Invalid retry attempts: ${attempts}. Must be a positive integer.`);
                   }
                   break;
+                } else if (parsed.processor === 'each') {
+                  // Format: each::<itemName>::<arrayPath>
+                  const colonIndex = parsed.statement.indexOf('::');
+                  if (colonIndex === -1) {
+                    throw new Error(`Invalid each expression format. Expected: each::<itemName>::<arrayPath>`);
+                  }
+                  const itemName = parsed.statement.substring(0, colonIndex).trim();
+                  const arrayPath = parsed.statement.substring(colonIndex + 2).trim();
+
+                  // Resolve the array by traversing the path in effectiveContext
+                  const pathParts = arrayPath.split('.');
+                  let array = effectiveContext;
+                  for (const part of pathParts) {
+                    if (array == null) break;
+                    array = array[part];
+                  }
+
+                  if (!Array.isArray(array)) {
+                    throw new Error(`each:: path "${arrayPath}" did not resolve to an array. Got: ${typeof array}`);
+                  }
+
+                  // Use original (unprocessed) body commands so templates resolve per-iteration
+                  // (same technique as json::stringify - body was already template-processed above)
+                  const rawBody = typeof originalCmd === 'object' && originalCmd[expressionKey]
+                    ? originalCmd[expressionKey]
+                    : nestedCommand;
+                  const bodyCommands = Array.isArray(rawBody) ? rawBody : [rawBody];
+                  for (const item of array) {
+                    await this.processCommands(bodyCommands, onError, env, wdir, captureName, captureRoot, retryConfig, { [itemName]: item });
+                  }
+                  nestedCommand = null;
+                  break;
                 } else if (BUILTIN_PROCESSORS.has(parsed.processor)) {
                   const originalInput = typeof originalCmd === 'object' && originalCmd[expressionKey]
                     ? originalCmd[expressionKey]
                     : nestedCommand;
-                  await dispatchBuiltin(parsed.processor, parsed.statement, nestedCommand, originalInput, fullContext, runtimeContext);
+                  await dispatchBuiltin(parsed.processor, parsed.statement, nestedCommand, originalInput, effectiveContext, runtimeContext);
                   nestedCommand = null;
                   break;
                 } else {
@@ -462,7 +499,7 @@ export default async function ({
                 if (cmd.useScript) {
                   await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
                 } else {
-                  await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, cmdRetryConfig);
+                  await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, cmdRetryConfig, loopContext);
                 }
               };
 
@@ -473,7 +510,7 @@ export default async function ({
               }
             } else if (cmd.parallel) {
               const executeParallel = async () => {
-                await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig);
+                await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig, loopContext);
               };
 
               if (cmdRetryConfig) {
@@ -483,7 +520,7 @@ export default async function ({
               }
             } else if (cmd.fork) {
               const executeFork = async () => {
-                await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig);
+                await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig, loopContext);
               };
 
               if (cmdRetryConfig) {
@@ -527,9 +564,9 @@ export default async function ({
       }
     },
 
-    async handleParallel(parallelCommands, onError, env, wdir, captureRoot, retryConfig) {
+    async handleParallel(parallelCommands, onError, env, wdir, captureRoot, retryConfig, loopContext = {}) {
       const tasks = parallelCommands.map((cmd) =>
-        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig)
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig, loopContext)
       );
       if (onError === 'stop') {
         await Promise.all(tasks);
@@ -538,13 +575,13 @@ export default async function ({
       }
     },
 
-    async handleFork(forkCommands, onError, env, wdir, captureRoot, retryConfig) {
+    async handleFork(forkCommands, onError, env, wdir, captureRoot, retryConfig, loopContext = {}) {
       // Handle both string and array inputs
       const commands = typeof forkCommands === 'string' ? [forkCommands] : forkCommands;
 
       // Don't await the promises, just start them and continue
       commands.forEach(cmd => {
-        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig)
+        this.processCommands([cmd], onError, env, wdir, undefined, captureRoot, retryConfig, loopContext)
           .catch(_error => {
             // console.error(`Fork error (log): ${_error}`);
           });
