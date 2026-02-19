@@ -15,22 +15,27 @@ At its core, `@fnet/shell-flow` accepts a configuration object that specifies th
 - **Sequential Command Execution**: Run commands one after the other, halting on errors if required.
 - **Parallel Command Execution**: Execute multiple commands simultaneously for increased efficiency.
 - **Background Execution**: Fork commands to run in the background, allowing the main process to continue without waiting.
+- **Script Mode**: Execute a sequence of commands within a single shared shell session.
 
 ### Expression-Based Builtins
 
-- **JSON Operations**: Parse, stringify, and extract JSON data (`json::parse`, `json::get`)
+- **JSON Operations**: Parse, stringify, and extract JSON data (`json::parse`, `json::get`, `json::stringify`)
 - **HTTP Requests**: Make GET, POST, PUT, DELETE requests (`http::get`, `http::post`)
 - **File Operations**: Read, write, copy, delete files (`file::read`, `file::write`)
 - **Text Transformations**: Uppercase, lowercase, trim, replace, split, join (`txt::upper`, `txt::lower`)
 - **Encoding/Hashing**: Base64, URL encoding, SHA256, MD5 (`encode::base64`, `hash::sha256`)
 - **Time Operations**: Timestamps, formatting, parsing (`time::now`, `time::format`)
+- **Capture & Retry**: Capture command output to context (`capture::`) and retry with exponential backoff (`retry::`)
 
 ### Advanced Features
 
+- **Exit Code Management**: Always returns an exit code for proper shell orchestration and CI/CD integration
 - **Runtime Context ($)**: Dedicated namespace for builtin results, prevents naming collisions
 - **Template Variables**: Dynamic value substitution with `{{variable}}` syntax
 - **Error Handling**: Customizable policies: stop, continue, throw
 - **Output Capture**: Store and access command outputs for further processing or logging
+- **Environment Management**: Flexible per-command or global environment variable configuration
+- **Composable Expressions**: Chain processors for complex workflows (e.g. `retry::3` wrapping `capture::logs`)
 
 ## Documentation
 

@@ -374,7 +374,7 @@ await shellFlow({
 });
 ```
 
-1. **Array Access**
+2. **Array Access**
 
 ```javascript
 await shellFlow({
@@ -388,7 +388,7 @@ await shellFlow({
 });
 ```
 
-1. **Default Values**
+3. **Default Values**
 
 ```javascript
 await shellFlow({
@@ -402,7 +402,7 @@ await shellFlow({
 });
 ```
 
-1. **Strict Mode (use {{API_KEY!}})**
+4. **Strict Mode (use {{API_KEY!}})**
 
 ```javascript
 await shellFlow({
@@ -416,7 +416,7 @@ await shellFlow({
 });
 ```
 
-1. **Conditional Value (presence-based)**
+5. **Conditional Value (presence-based)**
 
 ```javascript
 await shellFlow({
@@ -565,15 +565,19 @@ The library provides powerful expression-based builtins that write results to th
 
 ### Capture Expression
 
-Capture command output to runtime context:
+Capture command output and store it in the runtime context (`$`). The captured data is accessible both via `result.$.name` and directly as `result.name` on the returned result object.
 
 ```javascript
-await shellFlow({
+const result = await shellFlow({
   commands: [
     { 'capture::logs': 'npm run test' },
     { echo: 'Test output: {{$.logs.items[0].stdout}}' }
   ]
 });
+
+// Both access paths are equivalent:
+console.log(result.$.logs);   // via runtime context
+console.log(result.logs);     // via root result
 ```
 
 ### Retry Expression
@@ -607,7 +611,8 @@ await shellFlow({
     { 'json::get::name': '$.data.user.name' },
     { echo: 'Extracted: {{$.name}}' },
 
-    // Stringify object
+    // Stringify object — template references to objects (e.g. {{$.data}}) are
+    // automatically resolved to the actual object before stringification
     { 'json::stringify::output': '{{$.data}}' }
   ]
 });
@@ -616,7 +621,7 @@ await shellFlow({
 **JSON Operations:**
 
 - `json::parse::<name>: <json_string>` - Parse JSON to object
-- `json::stringify::<name>: <object>` - Convert object to JSON string
+- `json::stringify::<name>: <template_or_value>` - Convert object to JSON string; template references like `{{$.name}}` that resolve to objects are handled correctly
 - `json::get::<name>: <json_path>` - Extract value using JSONPath
 
 ### Text Operations
@@ -1082,4 +1087,4 @@ await shellFlow({
 
 ## Support
 
-For issues and feature requests, please visit our repository at [GitHub](https://github.com/fnetai/shell-flow).
+For issues and feature requests, please visit our repository at [GitLab](https://gitlab.com/fnetai/shell-flow).

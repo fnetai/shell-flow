@@ -1,21 +1,16 @@
 name: shell-flow
 
 ai::name: "@fnet/shell-flow"
-t::py::ai::name: "fnet_shell_flow"
-
 s::repo.url: https://github.com/fnetai/shell-flow.git
 
-# t::nd::input: g::file://fnet/input.yaml
-
 features:
-  t::dev::s::runtime.type: bun
-  t::nd::s::runtime.type: node
-  t::py::s::runtime.type: python
+  s::runtime.type: bun
 
   dts: true
   app: false
+  cli: false
 
-  t::nd::cli: false
+  t::dev::cli: true
 
 commands:
   dev:
@@ -23,10 +18,7 @@ commands:
     - fnode cli:dev
 
   node-deploy:
-    - fnode deploy --ftag nd
-
-  python-deploy:
-    - fnode deploy --ftag py
+    - fnode deploy
 
   # === Test Categories ===
 
