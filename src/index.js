@@ -2,8 +2,7 @@
 import { ProcessManager } from './core/index.js';
 
 // Import utility modules
-import { processTemplates } from './utils/index.js';
-import { withRetry, normalizeRetryConfig } from './utils/index.js';
+import { processTemplates, withRetry, normalizeRetryConfig } from './utils/index.js';
 
 // Import executor modules
 import {
@@ -48,7 +47,114 @@ import {
 // Import expression parser
 import parseExpression from '@fnet/expression';
 
+// --- Builtin processor dispatch ---
 
+const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time']);
+
+function parseStatement(processor, statement) {
+  const colonIndex = statement.indexOf('::');
+  if (colonIndex === -1) {
+    throw new Error(`Invalid ${processor} expression format. Expected: ${processor}::<operation>::<contextName>`);
+  }
+  return {
+    operation: statement.substring(0, colonIndex).trim(),
+    contextName: statement.substring(colonIndex + 2).trim(),
+  };
+}
+
+async function dispatchBuiltin(processor, statement, input, originalInput, fullContext, runtimeContext) {
+  const { operation, contextName } = parseStatement(processor, statement);
+  switch (processor) {
+    case 'json':   await dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext); break;
+    case 'txt':    await dispatchTxt(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'file':   await dispatchFile(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'http':   await dispatchHttp(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'encode': await dispatchEncode(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'decode': await dispatchDecode(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'hash':   await dispatchHash(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'time':   await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
+  }
+}
+
+async function dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'parse':     await executeJsonParse(input, contextName, fullContext, runtimeContext); break;
+    case 'stringify': await executeJsonStringify(originalInput, contextName, fullContext, runtimeContext); break;
+    case 'get':       await executeJsonGet(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown json operation: ${operation}. Supported: parse, stringify, get`);
+  }
+}
+
+async function dispatchTxt(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'upper':
+    case 'uppercase':  await executeTxtUppercase(input, contextName, fullContext, runtimeContext); break;
+    case 'lower':
+    case 'lowercase':  await executeTxtLowercase(input, contextName, fullContext, runtimeContext); break;
+    case 'trim':       await executeTxtTrim(input, contextName, fullContext, runtimeContext); break;
+    case 'replace':    await executeTxtReplace(input, contextName, fullContext, runtimeContext); break;
+    case 'split':      await executeTxtSplit(input, contextName, fullContext, runtimeContext); break;
+    case 'join':       await executeTxtJoin(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown txt operation: ${operation}. Supported: upper, lower, trim, replace, split, join`);
+  }
+}
+
+async function dispatchFile(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'read':   await executeFileRead(input, contextName, fullContext, runtimeContext); break;
+    case 'write':  await executeFileWrite(input, contextName, fullContext, runtimeContext); break;
+    case 'exists': await executeFileExists(input, contextName, fullContext, runtimeContext); break;
+    case 'delete': await executeFileDelete(input, contextName, fullContext, runtimeContext); break;
+    case 'copy':   await executeFileCopy(input, contextName, fullContext, runtimeContext); break;
+    case 'list':   await executeFileList(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown file operation: ${operation}. Supported: read, write, exists, delete, copy, list`);
+  }
+}
+
+async function dispatchHttp(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'get':    await executeHttpGet(input, contextName, fullContext, runtimeContext); break;
+    case 'post':   await executeHttpPost(input, contextName, fullContext, runtimeContext); break;
+    case 'put':    await executeHttpPut(input, contextName, fullContext, runtimeContext); break;
+    case 'delete': await executeHttpDelete(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown http operation: ${operation}. Supported: get, post, put, delete`);
+  }
+}
+
+async function dispatchEncode(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'base64': await executeEncodeBase64(input, contextName, fullContext, runtimeContext); break;
+    case 'url':    await executeEncodeUrl(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown encode operation: ${operation}. Supported: base64, url`);
+  }
+}
+
+async function dispatchDecode(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'base64': await executeDecodeBase64(input, contextName, fullContext, runtimeContext); break;
+    case 'url':    await executeDecodeUrl(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown decode operation: ${operation}. Supported: base64, url`);
+  }
+}
+
+async function dispatchHash(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'sha256': await executeHashSha256(input, contextName, fullContext, runtimeContext); break;
+    case 'md5':    await executeHashMd5(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown hash operation: ${operation}. Supported: sha256, md5`);
+  }
+}
+
+async function dispatchTime(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'now':    await executeTimeNow(input, contextName, fullContext, runtimeContext); break;
+    case 'format': await executeTimeFormat(input, contextName, fullContext, runtimeContext); break;
+    case 'parse':  await executeTimeParse(input, contextName, fullContext, runtimeContext); break;
+    case 'add':    await executeTimeAdd(input, contextName, fullContext, runtimeContext); break;
+    case 'diff':   await executeTimeDiff(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown time operation: ${operation}. Supported: now, format, parse, add, diff`);
+  }
+}
 
 /**
  * @typedef {Object} RetryConfig
@@ -127,14 +233,6 @@ export default async function ({
     ...context,
     $: runtimeContext
   };
-
-  // Note: Template processing is done lazily during command execution
-  // to allow runtime context ($) to be populated by previous commands
-  const processedCommands = commands;
-  const processedFork = fork;
-  const processedParallel = parallel;
-  const processedEnv = env;
-  const processedWdir = wdir;
 
   const processManager = new ProcessManager();
   const capture = {};
@@ -261,245 +359,27 @@ export default async function ({
               while (currentExpression.includes('::')) {
                 const parsed = parseExpression({ expression: currentExpression });
 
-                if (!parsed || !parsed.processor) {
-                  break;
-                }
+                if (!parsed || !parsed.processor) break;
 
                 if (parsed.processor === 'capture') {
-                  // Format: capture::<name>
                   expressionCaptureName = parsed.statement.trim();
-                  break; // capture is terminal
-                }
-                else if (parsed.processor === 'retry') {
-                  // Format: retry::<attempts>
+                  break;
+                } else if (parsed.processor === 'retry') {
                   const attempts = parseInt(parsed.statement.trim(), 10);
-
                   if (Number.isInteger(attempts) && attempts > 0) {
-                    expressionRetryConfig = normalizeRetryConfig({
-                      attempts,
-                      delay: 1000,
-                      factor: 2,
-                      maxDelay: 30000,
-                      codes: [1]
-                    });
+                    expressionRetryConfig = normalizeRetryConfig({ attempts, delay: 1000, factor: 2, maxDelay: 30000, codes: [1] });
                   } else {
                     throw new Error(`Invalid retry attempts: ${attempts}. Must be a positive integer.`);
                   }
-                  break; // retry is terminal for now
-                }
-                else if (parsed.processor === 'json') {
-                  // Format: json::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'parse') {
-                      await executeJsonParse(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'stringify') {
-                      // For stringify, use original command to avoid template processing issues
-                      const originalNestedCommand = typeof originalCmd === 'object' && originalCmd[expressionKey] ? originalCmd[expressionKey] : nestedCommand;
-                      await executeJsonStringify(originalNestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'get') {
-                      await executeJsonGet(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown JSON operation: ${operation}. Supported: parse, stringify, get`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid json expression format. Expected: json::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'txt') {
-                  // Format: txt::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'upper' || operation === 'uppercase') {
-                      await executeTxtUppercase(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'lower' || operation === 'lowercase') {
-                      await executeTxtLowercase(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'trim') {
-                      await executeTxtTrim(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'replace') {
-                      await executeTxtReplace(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'split') {
-                      await executeTxtSplit(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'join') {
-                      await executeTxtJoin(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown txt operation: ${operation}. Supported: upper, lower, trim, replace, split, join`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid txt expression format. Expected: txt::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'file') {
-                  // Format: file::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'read') {
-                      await executeFileRead(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'write') {
-                      await executeFileWrite(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'exists') {
-                      await executeFileExists(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'delete') {
-                      await executeFileDelete(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'copy') {
-                      await executeFileCopy(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'list') {
-                      await executeFileList(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown file operation: ${operation}. Supported: read, write, exists, delete, copy, list`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid file expression format. Expected: file::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'http') {
-                  // Format: http::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'get') {
-                      await executeHttpGet(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'post') {
-                      await executeHttpPost(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'put') {
-                      await executeHttpPut(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'delete') {
-                      await executeHttpDelete(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown http operation: ${operation}. Supported: get, post, put, delete`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid http expression format. Expected: http::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'encode') {
-                  // Format: encode::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'base64') {
-                      await executeEncodeBase64(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'url') {
-                      await executeEncodeUrl(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown encode operation: ${operation}. Supported: base64, url`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid encode expression format. Expected: encode::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'decode') {
-                  // Format: decode::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'base64') {
-                      await executeDecodeBase64(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'url') {
-                      await executeDecodeUrl(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown decode operation: ${operation}. Supported: base64, url`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid decode expression format. Expected: decode::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'hash') {
-                  // Format: hash::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'sha256') {
-                      await executeHashSha256(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'md5') {
-                      await executeHashMd5(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown hash operation: ${operation}. Supported: sha256, md5`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid hash expression format. Expected: hash::<operation>::<contextName>`);
-                  }
-                }
-                else if (parsed.processor === 'time') {
-                  // Format: time::<operation>::<contextName>
-                  const colonIndex = parsed.statement.indexOf('::');
-                  if (colonIndex !== -1) {
-                    const operation = parsed.statement.substring(0, colonIndex).trim();
-                    const contextName = parsed.statement.substring(colonIndex + 2).trim();
-
-                    if (operation === 'now') {
-                      await executeTimeNow(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'format') {
-                      await executeTimeFormat(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'parse') {
-                      await executeTimeParse(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'add') {
-                      await executeTimeAdd(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else if (operation === 'diff') {
-                      await executeTimeDiff(nestedCommand, contextName, fullContext, runtimeContext);
-                      nestedCommand = null;
-                    } else {
-                      throw new Error(`Unknown time operation: ${operation}. Supported: now, format, parse, add, diff`);
-                    }
-                    break;
-                  } else {
-                    throw new Error(`Invalid time expression format. Expected: time::<operation>::<contextName>`);
-                  }
-                }
-                else {
+                  break;
+                } else if (BUILTIN_PROCESSORS.has(parsed.processor)) {
+                  const originalInput = typeof originalCmd === 'object' && originalCmd[expressionKey]
+                    ? originalCmd[expressionKey]
+                    : nestedCommand;
+                  await dispatchBuiltin(parsed.processor, parsed.statement, nestedCommand, originalInput, fullContext, runtimeContext);
+                  nestedCommand = null;
+                  break;
+                } else {
                   break;
                 }
               }
@@ -673,19 +553,17 @@ export default async function ({
   };
 
   try {
-    if (processedCommands) {
-      let temp = processedCommands;
-      if (!Array.isArray(processedCommands)) temp = [processedCommands];
-      processPromises.push(runner.processCommands(temp, onError, processedEnv, processedWdir, undefined, capture, globalRetryConfig));
+    if (commands) {
+      const cmds = Array.isArray(commands) ? commands : [commands];
+      processPromises.push(runner.processCommands(cmds, onError, env, wdir, undefined, capture, globalRetryConfig));
     }
-    else if (processedParallel) {
-      processPromises.push(runner.handleParallel(processedParallel, onError, processedEnv, processedWdir, capture, globalRetryConfig));
+    else if (parallel) {
+      processPromises.push(runner.handleParallel(parallel, onError, env, wdir, capture, globalRetryConfig));
     }
-    else if (processedFork) {
-      processPromises.push(...processedFork.map(cmd =>
-        runner.processCommands([cmd], onError, processedEnv, processedWdir, undefined, capture, globalRetryConfig)
+    else if (fork) {
+      processPromises.push(...fork.map(cmd =>
+        runner.processCommands([cmd], onError, env, wdir, undefined, capture, globalRetryConfig)
           .catch(error => {
-            // console.error(`Fork error (log): ${error.message}`);
             if (onError === 'throw') throw error;
           })
       ));
