@@ -65,22 +65,22 @@ function parseStatement(processor, statement) {
 async function dispatchBuiltin(processor, statement, input, originalInput, fullContext, runtimeContext) {
   const { operation, contextName } = parseStatement(processor, statement);
   switch (processor) {
-    case 'json':   await dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext); break;
-    case 'txt':    await dispatchTxt(operation, contextName, input, fullContext, runtimeContext); break;
-    case 'file':   await dispatchFile(operation, contextName, input, fullContext, runtimeContext); break;
-    case 'http':   await dispatchHttp(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'json': await dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext); break;
+    case 'txt': await dispatchTxt(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'file': await dispatchFile(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'http': await dispatchHttp(operation, contextName, input, fullContext, runtimeContext); break;
     case 'encode': await dispatchEncode(operation, contextName, input, fullContext, runtimeContext); break;
     case 'decode': await dispatchDecode(operation, contextName, input, fullContext, runtimeContext); break;
-    case 'hash':   await dispatchHash(operation, contextName, input, fullContext, runtimeContext); break;
-    case 'time':   await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'hash': await dispatchHash(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'time': await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
   }
 }
 
 async function dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext) {
   switch (operation) {
-    case 'parse':     await executeJsonParse(input, contextName, fullContext, runtimeContext); break;
+    case 'parse': await executeJsonParse(input, contextName, fullContext, runtimeContext); break;
     case 'stringify': await executeJsonStringify(originalInput, contextName, fullContext, runtimeContext); break;
-    case 'get':       await executeJsonGet(input, contextName, fullContext, runtimeContext); break;
+    case 'get': await executeJsonGet(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown json operation: ${operation}. Supported: parse, stringify, get`);
   }
 }
@@ -88,34 +88,34 @@ async function dispatchJson(operation, contextName, input, originalInput, fullCo
 async function dispatchTxt(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
     case 'upper':
-    case 'uppercase':  await executeTxtUppercase(input, contextName, fullContext, runtimeContext); break;
+    case 'uppercase': await executeTxtUppercase(input, contextName, fullContext, runtimeContext); break;
     case 'lower':
-    case 'lowercase':  await executeTxtLowercase(input, contextName, fullContext, runtimeContext); break;
-    case 'trim':       await executeTxtTrim(input, contextName, fullContext, runtimeContext); break;
-    case 'replace':    await executeTxtReplace(input, contextName, fullContext, runtimeContext); break;
-    case 'split':      await executeTxtSplit(input, contextName, fullContext, runtimeContext); break;
-    case 'join':       await executeTxtJoin(input, contextName, fullContext, runtimeContext); break;
+    case 'lowercase': await executeTxtLowercase(input, contextName, fullContext, runtimeContext); break;
+    case 'trim': await executeTxtTrim(input, contextName, fullContext, runtimeContext); break;
+    case 'replace': await executeTxtReplace(input, contextName, fullContext, runtimeContext); break;
+    case 'split': await executeTxtSplit(input, contextName, fullContext, runtimeContext); break;
+    case 'join': await executeTxtJoin(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown txt operation: ${operation}. Supported: upper, lower, trim, replace, split, join`);
   }
 }
 
 async function dispatchFile(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
-    case 'read':   await executeFileRead(input, contextName, fullContext, runtimeContext); break;
-    case 'write':  await executeFileWrite(input, contextName, fullContext, runtimeContext); break;
+    case 'read': await executeFileRead(input, contextName, fullContext, runtimeContext); break;
+    case 'write': await executeFileWrite(input, contextName, fullContext, runtimeContext); break;
     case 'exists': await executeFileExists(input, contextName, fullContext, runtimeContext); break;
     case 'delete': await executeFileDelete(input, contextName, fullContext, runtimeContext); break;
-    case 'copy':   await executeFileCopy(input, contextName, fullContext, runtimeContext); break;
-    case 'list':   await executeFileList(input, contextName, fullContext, runtimeContext); break;
+    case 'copy': await executeFileCopy(input, contextName, fullContext, runtimeContext); break;
+    case 'list': await executeFileList(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown file operation: ${operation}. Supported: read, write, exists, delete, copy, list`);
   }
 }
 
 async function dispatchHttp(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
-    case 'get':    await executeHttpGet(input, contextName, fullContext, runtimeContext); break;
-    case 'post':   await executeHttpPost(input, contextName, fullContext, runtimeContext); break;
-    case 'put':    await executeHttpPut(input, contextName, fullContext, runtimeContext); break;
+    case 'get': await executeHttpGet(input, contextName, fullContext, runtimeContext); break;
+    case 'post': await executeHttpPost(input, contextName, fullContext, runtimeContext); break;
+    case 'put': await executeHttpPut(input, contextName, fullContext, runtimeContext); break;
     case 'delete': await executeHttpDelete(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown http operation: ${operation}. Supported: get, post, put, delete`);
   }
@@ -124,7 +124,7 @@ async function dispatchHttp(operation, contextName, input, fullContext, runtimeC
 async function dispatchEncode(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
     case 'base64': await executeEncodeBase64(input, contextName, fullContext, runtimeContext); break;
-    case 'url':    await executeEncodeUrl(input, contextName, fullContext, runtimeContext); break;
+    case 'url': await executeEncodeUrl(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown encode operation: ${operation}. Supported: base64, url`);
   }
 }
@@ -132,7 +132,7 @@ async function dispatchEncode(operation, contextName, input, fullContext, runtim
 async function dispatchDecode(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
     case 'base64': await executeDecodeBase64(input, contextName, fullContext, runtimeContext); break;
-    case 'url':    await executeDecodeUrl(input, contextName, fullContext, runtimeContext); break;
+    case 'url': await executeDecodeUrl(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown decode operation: ${operation}. Supported: base64, url`);
   }
 }
@@ -140,18 +140,18 @@ async function dispatchDecode(operation, contextName, input, fullContext, runtim
 async function dispatchHash(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
     case 'sha256': await executeHashSha256(input, contextName, fullContext, runtimeContext); break;
-    case 'md5':    await executeHashMd5(input, contextName, fullContext, runtimeContext); break;
+    case 'md5': await executeHashMd5(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown hash operation: ${operation}. Supported: sha256, md5`);
   }
 }
 
 async function dispatchTime(operation, contextName, input, fullContext, runtimeContext) {
   switch (operation) {
-    case 'now':    await executeTimeNow(input, contextName, fullContext, runtimeContext); break;
+    case 'now': await executeTimeNow(input, contextName, fullContext, runtimeContext); break;
     case 'format': await executeTimeFormat(input, contextName, fullContext, runtimeContext); break;
-    case 'parse':  await executeTimeParse(input, contextName, fullContext, runtimeContext); break;
-    case 'add':    await executeTimeAdd(input, contextName, fullContext, runtimeContext); break;
-    case 'diff':   await executeTimeDiff(input, contextName, fullContext, runtimeContext); break;
+    case 'parse': await executeTimeParse(input, contextName, fullContext, runtimeContext); break;
+    case 'add': await executeTimeAdd(input, contextName, fullContext, runtimeContext); break;
+    case 'diff': await executeTimeDiff(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown time operation: ${operation}. Supported: now, format, parse, add, diff`);
   }
 }
@@ -221,7 +221,8 @@ export default async function ({
   wdir,
   onError = "stop",
   context = {},
-  retry = false
+  retry = false,
+  processManager: externalProcessManager
 }) {
   wdir = wdir || process.cwd();
 
@@ -234,7 +235,9 @@ export default async function ({
     $: runtimeContext
   };
 
-  const processManager = new ProcessManager();
+  // Use external ProcessManager if provided, otherwise create a local one
+  const isExternalPM = !!externalProcessManager;
+  const processManager = externalProcessManager || new ProcessManager();
   const capture = {};
   const processPromises = [];
   const globalRetryConfig = normalizeRetryConfig(retry);
@@ -627,10 +630,17 @@ export default async function ({
   } catch (error) {
     // Make sure to terminate all processes even if an error occurs
     // console.error(`Error in shell-flow execution: ${error.message}`);
-    await processManager.terminateAll(1000);
+    if (!isExternalPM) {
+      await processManager.terminateAll(1000);
+    }
     throw error;
   } finally {
-    // Ensure all processes are terminated and signal handlers are removed
-    await processManager.dispose();
+    // Only dispose if we created the ProcessManager locally
+    // External ProcessManager lifecycle is managed by the caller
+    if (!isExternalPM) {
+      await processManager.dispose();
+    }
   }
 }
+
+export { ProcessManager };
