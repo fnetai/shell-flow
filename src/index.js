@@ -497,7 +497,7 @@ export default async function ({
             } else if (cmd.steps) {
               const executeSteps = async () => {
                 if (cmd.useScript) {
-                  await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot);
+                  await executeStepsWithScript(cmd.steps, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, processManager);
                 } else {
                   await this.processCommands(cmd.steps, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, cmd.captureName, captureRoot, cmdRetryConfig, loopContext);
                 }

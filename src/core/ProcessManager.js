@@ -77,10 +77,10 @@ export default class ProcessManager {
     process.off('unhandledRejection', this._onUnhandled);
   }
 
-  track(process) {
-    this.#processes.add(process);
-    process.once('exit', () => {
-      this.#processes.delete(process);
+  track(childProcess) {
+    this.#processes.add(childProcess);
+    childProcess.once('exit', () => {
+      this.#processes.delete(childProcess);
       if (this.#processes.size === 0) {
         this.dispose();
       }
@@ -93,35 +93,48 @@ export default class ProcessManager {
     return this.terminateAll(500);
   }
 
+  /**
+   * Check if a child process is still alive by sending signal 0.
+   */
+  #isAlive(proc) {
+    try {
+      process.kill(proc.pid, 0); // signal 0 = just check, don't actually signal
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async terminateAll(timeout = 500) { // timeout in ms
     const processes = Array.from(this.#processes);
     if (processes.length === 0) return;
 
-    // console.log(`Terminating ${processes.length} process(es)...`);
+    // First try SIGTERM for graceful shutdown — only for alive processes
+    const aliveProcesses = processes.filter(proc => this.#isAlive(proc));
 
-    // First try SIGTERM for graceful shutdown
-    const termPromises = processes.map(proc => {
-      proc.removeAllListeners();
-      return treeKillAsync(proc.pid, 'SIGTERM').catch(() => {
-        // Ignore errors from SIGTERM - we'll try SIGKILL next if needed
+    if (aliveProcesses.length > 0) {
+      const termPromises = aliveProcesses.map(proc => {
+        proc.removeAllListeners();
+        return treeKillAsync(proc.pid, 'SIGTERM').catch(() => {
+          // Ignore errors - process might already be gone
+        });
       });
-    });
 
-    try {
-      await Promise.all(termPromises);
-    } catch (err) {
-      // Some processes might already be gone
+      try {
+        await Promise.all(termPromises);
+      } catch (err) {
+        // Some processes might already be gone
+      }
+
+      // Give processes some time to terminate gracefully
+      await new Promise(resolve => setTimeout(resolve, Math.min(timeout / 2, 250)));
     }
 
-    // Give processes some time to terminate gracefully
-    await new Promise(resolve => setTimeout(resolve, Math.min(timeout / 2, 250)));
+    // Check which processes are STILL alive after SIGTERM and use SIGKILL
+    const stillAlive = Array.from(this.#processes).filter(proc => this.#isAlive(proc));
 
-    // Check if any processes are still running and use SIGKILL as a last resort
-    const remainingProcesses = Array.from(this.#processes);
-    if (remainingProcesses.length > 0) {
-      // console.log(`Forcefully killing ${remainingProcesses.length} remaining process(es)...`);
-
-      const killPromises = remainingProcesses.map(proc => {
+    if (stillAlive.length > 0) {
+      const killPromises = stillAlive.map(proc => {
         return treeKillAsync(proc.pid, 'SIGKILL').catch(() => {
           // Ignore errors - process might already be gone
         });
@@ -132,10 +145,11 @@ export default class ProcessManager {
       } catch (err) {
         // Some processes might already be gone
       }
+
+      // Final wait to ensure processes have time to exit
+      await new Promise(resolve => setTimeout(resolve, Math.min(timeout / 2, 250)));
     }
 
-    // Final wait to ensure processes have time to exit
-    await new Promise(resolve => setTimeout(resolve, Math.min(timeout / 2, 250)));
     this.#processes.clear();
   }
 }

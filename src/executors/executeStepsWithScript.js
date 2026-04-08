@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { ProcessManager, ShellError } from '../core/index.js';
+import { ShellError } from '../core/index.js';
 
 /**
  * Executes a sequence of shell commands using a temporary script file.
@@ -13,9 +13,10 @@ import { ProcessManager, ShellError } from '../core/index.js';
  * @param {string} wdir - Working directory for the commands.
  * @param {string} [captureName] - Name to capture command output.
  * @param {Object} captureRoot - Root object to store captured output.
+ * @param {import('../core/ProcessManager.js').default} processManager - Shared process manager instance.
  * @returns {Promise<void>} Resolves when all commands complete.
  */
-export default async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot) {
+export default async function executeStepsWithScript(steps, env, wdir, captureName, captureRoot, processManager) {
   const { nanoid } = await import('nanoid');
   const cwd = wdir ? path.resolve(wdir) : process.cwd();
   const tmpFileName = path.join(tmpdir(), `${nanoid()}`);
@@ -84,9 +85,7 @@ export default async function executeStepsWithScript(steps, env, wdir, captureNa
         detached: true,
       });
 
-      // Create a new ProcessManager for script execution if one wasn't provided
-      const scriptProcessManager = new ProcessManager();
-      scriptProcessManager.track(pcs);
+      processManager.track(pcs);
 
       let capture;
 
@@ -108,21 +107,15 @@ export default async function executeStepsWithScript(steps, env, wdir, captureNa
           captureRoot[captureName] = capture;
         }
 
-        // Clean up the process manager
-        scriptProcessManager.dispose().then(() => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new ShellError('Script process finished with error.', scriptPath, code));
-          }
-        });
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new ShellError('Script process finished with error.', scriptPath, code));
+        }
       });
 
       pcs.on('error', (error) => {
-        // Clean up the process manager on error
-        scriptProcessManager.dispose().then(() => {
-          reject(new ShellError(error.message, scriptPath));
-        });
+        reject(new ShellError(error.message, scriptPath));
       });
     });
   } finally {
