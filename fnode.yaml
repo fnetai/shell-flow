@@ -14,17 +14,25 @@ features:
 
 commands:
   dev:
-    - fnode build -ftag dev
-    - fnode cli:dev
+    description: Build with dev tag and start dev CLI
+    usage: frun dev
+    steps:
+      - fnode build -ftag dev
+      - fnode cli:dev
 
   node-deploy:
-    - fnode deploy
+    description: Deploy package to npm
+    usage: frun node-deploy
+    steps:
+      - fnode deploy
 
   # === Test Categories ===
 
   test-basic:
-    - fnode cli --config basic-01-simple-commands
-    - fnode cli --config basic-02-script-mode
+    description: Simple commands and script mode tests
+    steps:
+      - fnode cli --config basic-01-simple-commands
+      - fnode cli --config basic-02-script-mode
 
   test-builtin:
     - fnode cli --config builtin-01-echo
@@ -58,30 +66,32 @@ commands:
     - fnode cli --config control-02-exit-template || true
 
   test-process-control:
-    - echo "=== Process Control Tests ==="
-    - echo ""
-    - echo "Test 6.1: Signal handling (CTRL+C)"
-    - echo "  Run: fnode cli --config control-06-signal-handling"
-    - echo "  Then press CTRL+C and verify all processes terminate"
-    - echo ""
-    - echo "Test 6.2: Complete termination with exit command"
-    - echo "  Run: fnode cli --config control-07-complete-termination"
-    - echo "  Verify all background processes terminate on exit"
-    - echo ""
-    - echo "Test 6.3: Nested CTRL+C test"
-    - echo "  Run: fnode cli --config test-ctrl-c-nested"
-    - echo "  Then press CTRL+C and verify all nested processes terminate"
-    - echo ""
-    - echo "Test 6.4: HTTP servers with proper termination"
-    - echo "  Run: fnode cli --config control-08-http-servers"
-    - echo "  Verify HTTP servers are properly terminated on exit"
-    - echo ""
-    - echo "Test 6.5: HTTP servers with error handling"
-    - echo "  Run: fnode cli --config control-09-http-servers-error"
-    - echo "  Verify HTTP servers are properly terminated on error"
-    - echo ""
-    - echo "To verify cleanup after each test:"
-    - echo "  ps aux | grep -E '(sleep|node|bun)' | grep -v grep"
+    description: Manual process termination tests (requires user interaction)
+    steps:
+      - echo "=== Process Control Tests ==="
+      - echo ""
+      - echo "Test 6.1: Signal handling (CTRL+C)"
+      - echo "  Run: fnode cli --config control-06-signal-handling"
+      - echo "  Then press CTRL+C and verify all processes terminate"
+      - echo ""
+      - echo "Test 6.2: Complete termination with exit command"
+      - echo "  Run: fnode cli --config control-07-complete-termination"
+      - echo "  Verify all background processes terminate on exit"
+      - echo ""
+      - echo "Test 6.3: Nested CTRL+C test"
+      - echo "  Run: fnode cli --config test-ctrl-c-nested"
+      - echo "  Then press CTRL+C and verify all nested processes terminate"
+      - echo ""
+      - echo "Test 6.4: HTTP servers with proper termination"
+      - echo "  Run: fnode cli --config control-08-http-servers"
+      - echo "  Verify HTTP servers are properly terminated on exit"
+      - echo ""
+      - echo "Test 6.5: HTTP servers with error handling"
+      - echo "  Run: fnode cli --config control-09-http-servers-error"
+      - echo "  Verify HTTP servers are properly terminated on error"
+      - echo ""
+      - echo "To verify cleanup after each test:"
+      - echo "  ps aux | grep -E '(sleep|node|bun)' | grep -v grep"
 
   test-expression:
     - fnode cli --config expression-01-capture
@@ -127,19 +137,22 @@ commands:
   # === Run All Automated Tests ===
 
   test-all:
-    - frun test-basic
-    - frun test-builtin
-    - frun test-template
-    - frun test-parallel
-    - frun test-error
-    - frun test-retry
-    - frun test-env
-    - frun test-control
-    - frun test-expression
-    - frun test-txt
-    - frun test-file
-    - frun test-http
-    - frun test-encode
-    - frun test-time
-    - frun test-exitcode
-    - frun test-complex
+    description: Run all automated test categories
+    usage: frun test-all
+    steps:
+      - frun test-basic
+      - frun test-builtin
+      - frun test-template
+      - frun test-parallel
+      - frun test-error
+      - frun test-retry
+      - frun test-env
+      - frun test-control
+      - frun test-expression
+      - frun test-txt
+      - frun test-file
+      - frun test-http
+      - frun test-encode
+      - frun test-time
+      - frun test-exitcode
+      - frun test-complex
