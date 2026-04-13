@@ -1,0 +1,14 @@
+name: simple-server
+
+input:
+  properties:
+    mode:
+      type: string
+      description: Mode to run the server in
+      enum:
+        - with-signal-handling
+        - without-signal-handling
+        - long-running
+      
+features:
+  s::runtime.type: bun

@@ -26,6 +26,13 @@ commands:
     steps:
       - fnode deploy
 
+  prepare-simple-server:
+    wdir: tests/simple-server
+    steps:
+      - fnode build
+      - fnode cli:compile
+      - ./.workspace/.bin/simple-server --help
+
   # === Test Categories ===
 
   test-basic:
