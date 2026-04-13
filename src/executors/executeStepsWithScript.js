@@ -82,7 +82,7 @@ export default async function executeStepsWithScript(steps, env, wdir, captureNa
         stdio: captureName ? 'pipe' : 'inherit',
         env: env ? { ...process.env, ...env } : process.env,
         cwd,
-        detached: true,
+        detached: false,
       });
 
       processManager.track(pcs);

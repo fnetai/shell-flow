@@ -17,7 +17,7 @@ export default function executeCommand(command, env, wdir, captureParent, proces
       stdio: captureParent ? 'pipe' : 'inherit',
       env: env ? { ...process.env, ...env } : process.env,
       cwd: wdir ? path.resolve(wdir) : process.cwd(),
-      detached: true  // Ensure process runs in a new group
+      detached: false
     });
 
     processManager.track(pcs);
