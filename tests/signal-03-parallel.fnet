@@ -1,0 +1,14 @@
+# Test: SIGINT cleanup — parallel processes
+# Category: Signal Handling
+# Description: Runs 3 servers in parallel (waits for all to complete).
+#              Send CTRL+C to verify ALL parallel processes are terminated.
+
+commands:
+  wdir: ../
+  steps:
+    - echo: "=== Signal Test: Parallel ==="
+    - echo: "Starting 3 servers in parallel..."
+    - parallel:
+        - tests/simple-server/.workspace/.bin/simple-server --mode with-signal-handling --port 4001
+        - tests/simple-server/.workspace/.bin/simple-server --mode without-signal-handling --port 4002
+        - tests/simple-server/.workspace/.bin/simple-server --mode long-running --port 4003

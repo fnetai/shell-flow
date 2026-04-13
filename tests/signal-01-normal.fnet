@@ -1,0 +1,11 @@
+# Test: SIGINT cleanup — normal (sequential) process
+# Category: Signal Handling
+# Description: Starts a single server sequentially.
+#              Send CTRL+C to verify the server process is terminated.
+
+commands:
+  wdir: ../
+  steps:
+    - echo: "=== Signal Test: Normal (Sequential) ==="
+    - echo: "Starting server on port 4001 (with-signal-handling)..."
+    - tests/simple-server/.workspace/.bin/simple-server --mode with-signal-handling --port 4001

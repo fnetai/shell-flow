@@ -9,6 +9,10 @@ input:
         - with-signal-handling
         - without-signal-handling
         - long-running
+    port:
+      type: number
+      description: Port to listen on
+      default: 4444
       
 features:
   s::runtime.type: bun

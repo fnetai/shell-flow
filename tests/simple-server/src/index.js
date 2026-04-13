@@ -13,8 +13,7 @@ function createServer(port) {
   });
 }
 
-export default async ({ mode }) => {
-  const port = 4444;
+export default async ({ mode, port = 4444 }) => {
 
   if (mode === 'with-signal-handling') {
     const server = await createServer(port);

@@ -131,10 +131,32 @@ commands:
     - fnode cli --config complex-01-mixed-execution
     - fnode cli --config complex-02-full-features
 
-  # === Interactive Tests (require user input) ===
+  # === Interactive Tests (require user input / CTRL+C) ===
 
   test-interactive:
     - fnode cli --config builtin-03-pause
+
+  test-signal:
+    description: Signal cleanup tests (requires CTRL+C)
+    steps:
+      - echo "=== Signal Cleanup Tests ==="
+      - echo ""
+      - echo "Test 1: Normal (sequential) — single server"
+      - echo "  Run: fnode cli --config signal-01-normal"
+      - echo "  Then press CTRL+C and verify server terminates"
+      - echo ""
+      - echo "Test 2: Fork — 3 servers (graceful, no-handler, long-running)"
+      - echo "  Run: fnode cli --config signal-02-fork"
+      - echo "  Then press CTRL+C and verify ALL 3 servers terminate"
+      - echo ""
+      - echo "Test 3: Parallel — 3 servers (graceful, no-handler, long-running)"
+      - echo "  Run: fnode cli --config signal-03-parallel"
+      - echo "  Then press CTRL+C and verify ALL 3 servers terminate"
+      - echo ""
+      - echo "After each test, verify no zombie processes:"
+      - echo "  curl http://localhost:4001 # should fail"
+      - echo "  curl http://localhost:4002 # should fail"
+      - echo "  curl http://localhost:4003 # should fail"
 
   # === Tests that throw errors (run separately) ===
 

@@ -1,0 +1,17 @@
+# Test: SIGINT cleanup — fork (background) processes
+# Category: Signal Handling
+# Description: Forks 3 servers with different modes as background processes.
+#              Send CTRL+C to verify ALL forked processes are terminated.
+
+commands:
+  wdir: ../
+  steps:
+    - echo: "=== Signal Test: Fork (Background) ==="
+    - echo: "Forking 3 servers with different modes..."
+    - fork:
+        - tests/simple-server/.workspace/.bin/simple-server --mode with-signal-handling --port 4001
+        - tests/simple-server/.workspace/.bin/simple-server --mode without-signal-handling --port 4002
+        - tests/simple-server/.workspace/.bin/simple-server --mode long-running --port 4003
+    - sleep: 2
+    - echo: "All 3 servers are running. Send CTRL+C to test cleanup..."
+    - sleep: 300
