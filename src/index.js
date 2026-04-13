@@ -222,6 +222,7 @@ export default async function ({
   onError = "stop",
   context = {},
   retry = false,
+  gracefulTimeout,
   processManager: externalProcessManager
 }) {
   wdir = wdir || process.cwd();
@@ -237,7 +238,8 @@ export default async function ({
 
   // Use external ProcessManager if provided, otherwise create a local one
   const isExternalPM = !!externalProcessManager;
-  const processManager = externalProcessManager || new ProcessManager();
+  const pmOptions = gracefulTimeout ? { gracefulTimeout } : undefined;
+  const processManager = externalProcessManager || new ProcessManager(pmOptions);
   const capture = {};
   const processPromises = [];
   const globalRetryConfig = normalizeRetryConfig(retry);
