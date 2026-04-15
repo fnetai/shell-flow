@@ -1,0 +1,89 @@
+# Test: When Condition
+# Category: Control
+# Level: Simple
+# Description: Conditional step execution with when
+
+commands:
+  - echo: "Test: When conditional execution"
+
+  # Truthy string — should run
+  - when: "yes"
+    steps:
+      - echo: "when truthy string: EXECUTED"
+
+  # Falsy string — should skip
+  - when: "false"
+    steps:
+      - echo: "when falsy string: THIS SHOULD NOT APPEAR"
+
+  # Empty string — should skip
+  - when: ""
+    steps:
+      - echo: "when empty string: THIS SHOULD NOT APPEAR"
+
+  # Boolean-like via context
+  - when: "true"
+    steps:
+      - echo: "when 'true': EXECUTED"
+
+  # Equal condition — should run
+  - when:
+      equal: ["hello", "hello"]
+    steps:
+      - echo: "when equal: EXECUTED"
+
+  # Equal condition — should skip
+  - when:
+      equal: ["hello", "world"]
+    steps:
+      - echo: "when not equal: THIS SHOULD NOT APPEAR"
+
+  # Not condition — should run (negating falsy)
+  - when:
+      not: "false"
+    steps:
+      - echo: "when not false: EXECUTED"
+
+  # Not condition — should skip (negating truthy)
+  - when:
+      not: "yes"
+    steps:
+      - echo: "when not truthy: THIS SHOULD NOT APPEAR"
+
+  # Contains condition
+  - when:
+      contains: ["hello world", "world"]
+    steps:
+      - echo: "when contains: EXECUTED"
+
+  # Numeric gt
+  - when:
+      gt: [10, 5]
+    steps:
+      - echo: "when gt: EXECUTED"
+
+  # Numeric lt — should skip
+  - when:
+      lt: [10, 5]
+    steps:
+      - echo: "when lt false: THIS SHOULD NOT APPEAR"
+
+  # File exists
+  - when:
+      exists: "./package.json"
+    steps:
+      - echo: "when exists: EXECUTED"
+
+  # File not exists
+  - when:
+      exists: "./nonexistent-file-12345.txt"
+    steps:
+      - echo: "when exists missing: THIS SHOULD NOT APPEAR"
+
+  # When with parallel
+  - when: "yes"
+    parallel:
+      - echo "when parallel task 1"
+      - echo "when parallel task 2"
+
+  - echo: "When condition tests completed!"

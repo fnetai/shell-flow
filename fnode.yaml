@@ -96,6 +96,13 @@ commands:
       - fnode cli --config control-01-exit || true
       - fnode cli --config control-02-exit-template || true
 
+  test-when:
+    description: Conditional execution tests (when with truthy, equal, not, contains, exists, numeric)
+    usage: frun test-when
+    steps:
+      - fnode cli --config control-12-when
+      - fnode cli --config control-13-when-advanced
+
   test-timeout:
     description: Timeout option tests (time limits and timeout+retry combination)
     usage: frun test-timeout
@@ -262,6 +269,7 @@ commands:
       - frun test-time
       - frun test-assert
       - frun test-env-builtin
+      - frun test-when
       - frun test-timeout
       - frun test-exitcode
       - frun test-complex

@@ -198,6 +198,88 @@ async function dispatchEnv(operation, contextName, input, fullContext, runtimeCo
   }
 }
 
+// --- Condition evaluation for `when` ---
+
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * Evaluates a `when` condition. Returns true if the step should execute.
+ *
+ * Supports:
+ * - String: truthy check (treats "false", "0", "", "null", "undefined" as falsy)
+ * - Boolean/Number: standard JS truthiness
+ * - Object with condition key:
+ *   - { equal: [a, b] }
+ *   - { not: value }
+ *   - { contains: [haystack, needle] }
+ *   - { gt: [a, b] }, { gte: [a, b] }, { lt: [a, b] }, { lte: [a, b] }
+ *   - { exists: "filepath" }
+ *
+ * @param {any} condition - The when condition value (already template-processed)
+ * @returns {boolean}
+ */
+function evaluateWhen(condition) {
+  if (condition === null || condition === undefined) return false;
+
+  // String: truthy check
+  if (typeof condition === 'string') {
+    const falsyStrings = ['false', '0', '', 'null', 'undefined'];
+    return !falsyStrings.includes(condition.trim().toLowerCase());
+  }
+
+  // Boolean or number
+  if (typeof condition === 'boolean' || typeof condition === 'number') {
+    return !!condition;
+  }
+
+  // Object: condition type
+  if (typeof condition === 'object') {
+    if ('equal' in condition) {
+      const [a, b] = Array.isArray(condition.equal) ? condition.equal : [];
+      return String(a) === String(b);
+    }
+    if ('not' in condition) {
+      const val = condition.not;
+      if (typeof val === 'string') {
+        const falsyStrings = ['false', '0', '', 'null', 'undefined'];
+        return falsyStrings.includes(val.trim().toLowerCase());
+      }
+      return !val;
+    }
+    if ('contains' in condition) {
+      const [haystack, needle] = Array.isArray(condition.contains) ? condition.contains : [];
+      if (Array.isArray(haystack)) return haystack.includes(needle);
+      return String(haystack).includes(String(needle));
+    }
+    if ('gt' in condition) {
+      const [a, b] = Array.isArray(condition.gt) ? condition.gt.map(Number) : [];
+      return a > b;
+    }
+    if ('gte' in condition) {
+      const [a, b] = Array.isArray(condition.gte) ? condition.gte.map(Number) : [];
+      return a >= b;
+    }
+    if ('lt' in condition) {
+      const [a, b] = Array.isArray(condition.lt) ? condition.lt.map(Number) : [];
+      return a < b;
+    }
+    if ('lte' in condition) {
+      const [a, b] = Array.isArray(condition.lte) ? condition.lte.map(Number) : [];
+      return a <= b;
+    }
+    if ('exists' in condition) {
+      const filePath = String(condition.exists).trim();
+      return existsSync(resolve(filePath));
+    }
+
+    // Unknown condition object — treat as truthy (has keys)
+    return Object.keys(condition).length > 0;
+  }
+
+  return !!condition;
+}
+
 /**
  * @typedef {Object} RetryConfig
  * @property {number} [attempts=3] - Maximum number of retry attempts
@@ -500,6 +582,14 @@ export default async function ({
 
             // Get the command-specific retry config, falling back to parent config
             const cmdRetryConfig = cmd.retry !== undefined ? normalizeRetryConfig(cmd.retry) : retryConfig;
+
+            // Evaluate `when` condition — skip step if falsy
+            if ('when' in cmd) {
+              const shouldRun = evaluateWhen(cmd.when);
+              if (!shouldRun) {
+                continue; // Skip this step silently
+              }
+            }
 
             if ('exit' in cmd) {
               if (keys.length !== 1) {

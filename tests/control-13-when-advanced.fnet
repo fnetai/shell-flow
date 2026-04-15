@@ -1,0 +1,55 @@
+# Test: When Condition - Advanced
+# Category: Control
+# Level: Advanced
+# Description: When conditions with runtime context, capture, and builtins
+
+commands:
+  - echo: "Test: When with runtime context"
+
+  # Step 1: Use file::exists to check, then when on result
+  - file::exists::has_pkg: "./package.json"
+  - when: "{{$.has_pkg}}"
+    steps:
+      - echo: "package.json exists — conditional step ran"
+
+  # Step 2: Parse JSON and conditionally branch on a field
+  - json::parse::config: '{"mode":"production","debug":false}'
+
+  - when:
+      equal: ["{{$.config.mode}}", "production"]
+    steps:
+      - echo: "Production mode detected"
+
+  - when:
+      equal: ["{{$.config.mode}}", "development"]
+    steps:
+      - echo: "Development mode: THIS SHOULD NOT APPEAR"
+
+  # Step 3: Capture output and conditionally assert
+  - capture::ver::node --version
+  - when:
+      contains: ["{{$.ver.items.0.stdout}}", "v"]
+    steps:
+      - echo: "Node version starts with v — correct"
+      - assert::truthy::ver_ok: "{{$.ver.items.0.stdout}}"
+
+  # Step 4: Numeric condition from parsed data
+  - json::parse::metrics: '{"latency":45,"threshold":100}'
+  - when:
+      lt: ["{{$.metrics.latency}}", "{{$.metrics.threshold}}"]
+    steps:
+      - echo: "Latency {{$.metrics.latency}}ms is below threshold {{$.metrics.threshold}}ms"
+
+  # Step 5: When with env::
+  - env::set::s1: ["SHELLFLOW_WHEN_TEST", "active"]
+  - env::get::when_val: SHELLFLOW_WHEN_TEST
+  - when:
+      equal: ["{{$.when_val}}", "active"]
+    steps:
+      - echo: "Env-based condition matched"
+  - env::delete::d1: SHELLFLOW_WHEN_TEST
+
+  - echo: "Advanced when tests completed!"
+
+context:
+  env: "test"

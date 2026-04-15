@@ -39,6 +39,7 @@ yarn add @fnet/shell-flow
 - **Exit Code Management** - Always returns exit code for proper shell orchestration and CI/CD integration
 - **Runtime Context ($)** - Dedicated namespace for builtin results, prevents naming collisions
 - **Template Variables** - Dynamic value substitution with `{{variable}}` syntax
+- **Conditional Execution** - Skip steps based on runtime conditions (`when`)
 - **Error Handling** - Customizable policies: stop, continue, throw
 - **Timeout** - Time limits for steps, parallel, and fork groups
 - **Output Capture** - Store and access command outputs for processing
@@ -1228,6 +1229,105 @@ await shellFlow({
 - Respects `onError` policy: `stop` halts execution, `continue` moves to next step, `throw` re-throws
 - Wraps `retry` when both are present: timeout applies to the full retry cycle
 - Works with `steps`, `parallel`, and `fork` groups
+
+## Conditional Execution (when)
+
+The `when` key on a command object enables conditional step execution. If the condition evaluates to false, the entire step (steps/parallel/fork) is silently skipped.
+
+### String Conditions (truthy check)
+
+```javascript
+await shellFlow({
+  commands: [
+    // Truthy string — runs
+    { when: 'yes', steps: [{ echo: 'This runs' }] },
+
+    // Falsy string — skipped
+    { when: 'false', steps: [{ echo: 'This is skipped' }] },
+
+    // Template variable — evaluated at runtime
+    { when: '{{$.has_config}}', steps: [{ echo: 'Config found' }] }
+  ]
+});
+```
+
+Falsy strings: `"false"`, `"0"`, `""`, `"null"`, `"undefined"` (case-insensitive).
+
+### Object Conditions
+
+```javascript
+await shellFlow({
+  commands: [
+    // Equality
+    { when: { equal: ['{{$.mode}}', 'production'] },
+      steps: [{ echo: 'Production mode' }] },
+
+    // Negation
+    { when: { not: '{{$.debug}}' },
+      steps: [{ echo: 'Debug is off' }] },
+
+    // String contains
+    { when: { contains: ['{{$.version}}', 'v'] },
+      steps: [{ echo: 'Version starts with v' }] },
+
+    // Numeric comparisons
+    { when: { gt: ['{{$.count}}', 0] },
+      steps: [{ echo: 'Count is positive' }] },
+
+    // File existence
+    { when: { exists: './config.json' },
+      steps: [{ echo: 'Config file found' }] }
+  ]
+});
+```
+
+**Supported Conditions:**
+
+| Condition | Syntax | Description |
+| --------- | ------ | ----------- |
+| Truthy | `when: "value"` | String/boolean truthy check |
+| Equal | `when: { equal: [a, b] }` | String equality |
+| Not | `when: { not: value }` | Negation / falsy check |
+| Contains | `when: { contains: [haystack, needle] }` | String or array contains |
+| Greater than | `when: { gt: [a, b] }` | Numeric a > b |
+| Greater or equal | `when: { gte: [a, b] }` | Numeric a >= b |
+| Less than | `when: { lt: [a, b] }` | Numeric a < b |
+| Less or equal | `when: { lte: [a, b] }` | Numeric a <= b |
+| File exists | `when: { exists: "path" }` | File existence check |
+
+**Behavior:**
+
+- `when` is evaluated after template processing (so `$` context values are resolved)
+- If condition is false, the entire step is skipped silently (no error)
+- No `else` block — use a second `when` with `not:` for the opposite branch
+- Works with all step types: `steps`, `parallel`, `fork`
+- Composable with `timeout`, `retry`, `onError`, `env`, `wdir`
+
+### Combining with Other Builtins
+
+```javascript
+await shellFlow({
+  commands: [
+    // Check file, then conditionally process
+    { 'file::exists::has_data': './data.json' },
+    { when: '{{$.has_data}}',
+      steps: [
+        { 'file::read::data': './data.json' },
+        { 'json::parse::parsed': '{{$.data}}' },
+        { echo: 'Loaded {{$.parsed.items.length}} items' }
+      ]
+    },
+
+    // Capture and conditionally assert
+    { 'capture::health': 'curl -s http://localhost:3000/health' },
+    { when: { contains: ['{{$.health.items.0.stdout}}', 'ok'] },
+      steps: [
+        { echo: 'Service is healthy' }
+      ]
+    }
+  ]
+});
+```
 
 ## Error Handling
 
