@@ -29,6 +29,7 @@ yarn add @fnet/shell-flow
 - **Text Transformations** - Uppercase, lowercase, trim, replace, split, join (`txt::*`)
 - **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
 - **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
+- **Assertions** - Validate values, files, and conditions in workflows (`assert::equal`, `assert::exists`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
 - **Array Iteration** - Loop over parsed arrays and run commands per item (`each::`)
 
@@ -897,6 +898,87 @@ await shellFlow({
   - Units: `milliseconds`, `seconds`, `minutes`, `hours`, `days`
 - `time::diff::<name>: {start, end, unit}` - Calculate difference
 
+### Assert Operations
+
+Validate values, compare results, and check conditions within workflows. Assertions write their results to the runtime context (`$`) and throw a `ShellError` on failure — making them composable with `onError` policies.
+
+```javascript
+await shellFlow({
+  commands: [
+    // Equality check
+    { 'assert::equal::check': ['hello', 'hello'] },
+    { echo: 'Passed: {{$.check.passed}}' },
+
+    // Inequality check
+    { 'assert::not_equal::check2': ['hello', 'world'] },
+
+    // String contains
+    { 'assert::contains::check3': ['hello world', 'world'] },
+
+    // File existence
+    { 'assert::exists::check4': './package.json' },
+
+    // Truthy value
+    { 'assert::truthy::check5': 'yes' },
+
+    // Numeric comparisons
+    { 'assert::gt::check6': [10, 5] },
+    { 'assert::gte::check7': [10, 10] },
+    { 'assert::lt::check8': [3, 7] },
+    { 'assert::lte::check9': [5, 5] }
+  ]
+});
+```
+
+**Assert Operations:**
+
+- `assert::equal::<name>: [actual, expected]` - Strict equality (string comparison)
+- `assert::not_equal::<name>: [actual, unexpected]` - Inequality check
+- `assert::contains::<name>: [haystack, needle]` - String or array contains
+- `assert::exists::<name>: <path>` - File existence check
+- `assert::truthy::<name>: <value>` - Truthy check (treats `"false"`, `"0"`, `""`, `"null"`, `"undefined"` as falsy)
+- `assert::gt::<name>: [actual, expected]` - Greater than (numeric)
+- `assert::gte::<name>: [actual, expected]` - Greater than or equal (numeric)
+- `assert::lt::<name>: [actual, expected]` - Less than (numeric)
+- `assert::lte::<name>: [actual, expected]` - Less than or equal (numeric)
+
+**Result Format:**
+
+```javascript
+{
+  passed: true,    // Whether the assertion passed
+  actual: "hello", // The actual value (key varies by operation)
+  expected: "hello" // The expected value
+}
+```
+
+**Using with other builtins:**
+
+Assertions are most powerful when combined with capture, JSON parsing, and other builtins for self-validating workflows:
+
+```javascript
+await shellFlow({
+  commands: [
+    // Capture and validate command output
+    { 'capture::version': 'node --version' },
+    { 'assert::contains::ver_check': ['{{$.version.items.0.stdout}}', 'v'] },
+
+    // Parse JSON and validate fields
+    { 'json::parse::data': '{"status":"ok","count":42}' },
+    { 'assert::equal::status': ['{{$.data.status}}', 'ok'] },
+    { 'assert::gt::count': ['{{$.data.count}}', 0] },
+
+    // Handle expected failures gracefully
+    {
+      steps: [
+        { 'assert::equal::will_fail': ['actual', 'different'] }
+      ],
+      onError: 'continue'
+    }
+  ]
+});
+```
+
 ## Exit Control
 
 The library supports controlled process termination using the `exit` command. The exit code can be specified directly or using template variables:
@@ -1118,4 +1200,4 @@ await shellFlow({
 
 ## Support
 
-For issues and feature requests, please visit our repository at [GitLab](https://gitlab.com/fnetai/shell-flow).
+For issues and feature requests, please visit our repository at [GitHub](https://github.com/fnetai/shell-flow).

@@ -165,6 +165,13 @@ commands:
     steps:
       - fnode cli --config builtin-09-time
 
+  test-assert:
+    description: Assert builtin and expression tests (equal, contains, exists, numeric)
+    usage: frun test-assert
+    steps:
+      - fnode cli --config builtin-10-assert
+      - fnode cli --config expression-06-assert
+
   test-exitcode:
     description: Exit code propagation and validation tests
     usage: frun test-exitcode
@@ -239,5 +246,6 @@ commands:
       - frun test-http
       - frun test-encode
       - frun test-time
+      - frun test-assert
       - frun test-exitcode
       - frun test-complex

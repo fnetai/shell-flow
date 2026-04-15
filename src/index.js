@@ -41,7 +41,16 @@ import {
   executeTimeFormat,
   executeTimeParse,
   executeTimeAdd,
-  executeTimeDiff
+  executeTimeDiff,
+  executeAssertEqual,
+  executeAssertNotEqual,
+  executeAssertContains,
+  executeAssertExists,
+  executeAssertTruthy,
+  executeAssertGt,
+  executeAssertGte,
+  executeAssertLt,
+  executeAssertLte
 } from './executors/index.js';
 
 // Import expression parser
@@ -49,7 +58,7 @@ import parseExpression from '@fnet/expression';
 
 // --- Builtin processor dispatch ---
 
-const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time']);
+const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time', 'assert']);
 
 function parseStatement(processor, statement) {
   const colonIndex = statement.indexOf('::');
@@ -73,6 +82,7 @@ async function dispatchBuiltin(processor, statement, input, originalInput, fullC
     case 'decode': await dispatchDecode(operation, contextName, input, fullContext, runtimeContext); break;
     case 'hash': await dispatchHash(operation, contextName, input, fullContext, runtimeContext); break;
     case 'time': await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'assert': await dispatchAssert(operation, contextName, input, fullContext, runtimeContext); break;
   }
 }
 
@@ -153,6 +163,21 @@ async function dispatchTime(operation, contextName, input, fullContext, runtimeC
     case 'add': await executeTimeAdd(input, contextName, fullContext, runtimeContext); break;
     case 'diff': await executeTimeDiff(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown time operation: ${operation}. Supported: now, format, parse, add, diff`);
+  }
+}
+
+async function dispatchAssert(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'equal': await executeAssertEqual(input, contextName, fullContext, runtimeContext); break;
+    case 'not_equal': await executeAssertNotEqual(input, contextName, fullContext, runtimeContext); break;
+    case 'contains': await executeAssertContains(input, contextName, fullContext, runtimeContext); break;
+    case 'exists': await executeAssertExists(input, contextName, fullContext, runtimeContext); break;
+    case 'truthy': await executeAssertTruthy(input, contextName, fullContext, runtimeContext); break;
+    case 'gt': await executeAssertGt(input, contextName, fullContext, runtimeContext); break;
+    case 'gte': await executeAssertGte(input, contextName, fullContext, runtimeContext); break;
+    case 'lt': await executeAssertLt(input, contextName, fullContext, runtimeContext); break;
+    case 'lte': await executeAssertLte(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown assert operation: ${operation}. Supported: equal, not_equal, contains, exists, truthy, gt, gte, lt, lte`);
   }
 }
 

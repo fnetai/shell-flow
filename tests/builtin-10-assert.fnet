@@ -1,0 +1,45 @@
+# Test: Assert Builtins
+# Category: Builtin
+# Level: Simple
+# Description: Assert operations for workflow testing (assert::)
+
+commands:
+  - echo: "Test: Assert builtins (assert::)"
+
+  # Equal
+  - assert::equal::eq1: ["hello", "hello"]
+  - echo: "assert::equal passed: {{$.eq1.passed}}"
+
+  # Not equal
+  - assert::not_equal::neq1: ["hello", "world"]
+  - echo: "assert::not_equal passed: {{$.neq1.passed}}"
+
+  # Contains (string)
+  - assert::contains::c1: ["hello world", "world"]
+  - echo: "assert::contains (string) passed: {{$.c1.passed}}"
+
+  # Truthy
+  - assert::truthy::t1: "yes"
+  - echo: "assert::truthy passed: {{$.t1.passed}}"
+
+  # Exists (check a file that should exist)
+  - assert::exists::e1: "./package.json"
+  - echo: "assert::exists passed: {{$.e1.passed}}"
+
+  # Numeric: gt
+  - assert::gt::gt1: [10, 5]
+  - echo: "assert::gt passed: {{$.gt1.passed}}"
+
+  # Numeric: gte
+  - assert::gte::gte1: [10, 10]
+  - echo: "assert::gte passed: {{$.gte1.passed}}"
+
+  # Numeric: lt
+  - assert::lt::lt1: [3, 7]
+  - echo: "assert::lt passed: {{$.lt1.passed}}"
+
+  # Numeric: lte
+  - assert::lte::lte1: [5, 5]
+  - echo: "assert::lte passed: {{$.lte1.passed}}"
+
+  - echo: "Assert builtin tests completed!"

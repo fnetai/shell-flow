@@ -39,4 +39,15 @@ export {
   executeTimeAdd,
   executeTimeDiff
 } from './time-builtins.js';
+export {
+  executeAssertEqual,
+  executeAssertNotEqual,
+  executeAssertContains,
+  executeAssertExists,
+  executeAssertTruthy,
+  executeAssertGt,
+  executeAssertGte,
+  executeAssertLt,
+  executeAssertLte
+} from './assert-builtins.js';
 

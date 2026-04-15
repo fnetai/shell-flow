@@ -1,0 +1,40 @@
+# Test: Expression - Assert with Runtime Context
+# Category: Expression
+# Level: Advanced
+# Description: Assert operations combined with capture, json, and $ context
+
+commands:
+  - echo: "Test: Assert expressions with $ context"
+
+  # Step 1: Capture a command output
+  - capture::version::echo "1.2.3"
+
+  # Step 2: Assert captured output contains expected value
+  - assert::contains::ver_check: ["{{$.version.items.0.stdout}}", "1.2"]
+  - echo: "Version contains 1.2: {{$.ver_check.passed}}"
+
+  # Step 3: Parse JSON and assert on parsed data
+  - json::parse::data: '{"status":"ok","count":42}'
+
+  # Step 4: Assert parsed values
+  - assert::equal::status_check: ["{{$.data.status}}", "ok"]
+  - echo: "Status is ok: {{$.status_check.passed}}"
+
+  - assert::gt::count_check: ["{{$.data.count}}", 10]
+  - echo: "Count > 10: {{$.count_check.passed}}"
+
+  # Step 5: Text transform then assert
+  - txt::upper::uppered: "hello"
+  - assert::equal::upper_check: ["{{$.uppered}}", "HELLO"]
+  - echo: "Uppercase correct: {{$.upper_check.passed}}"
+
+  # Step 6: Assert with onError continue (expected failure)
+  - steps:
+      - assert::equal::fail_check: ["actual", "different"]
+    onError: continue
+  - echo: "Failed assertion handled gracefully"
+
+  - echo: "Assert expression tests completed!"
+
+context:
+  env: "test"
