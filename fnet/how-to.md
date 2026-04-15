@@ -40,6 +40,7 @@ yarn add @fnet/shell-flow
 - **Runtime Context ($)** - Dedicated namespace for builtin results, prevents naming collisions
 - **Template Variables** - Dynamic value substitution with `{{variable}}` syntax
 - **Error Handling** - Customizable policies: stop, continue, throw
+- **Timeout** - Time limits for steps, parallel, and fork groups
 - **Output Capture** - Store and access command outputs for processing
 - **Environment Management** - Flexible environment variable configuration
 - **Composable Expressions** - Nest expressions for complex workflows
@@ -59,6 +60,7 @@ yarn add @fnet/shell-flow
   wdir?: string;              // Working directory
   captureName?: string;       // Name to capture output
   useScript?: boolean;        // Whether to execute in script mode
+  timeout?: number;            // Timeout in seconds (0 = disabled)
   retry?: boolean | {         // Optional retry config
     attempts?: number;        // default 3
     delay?: number;           // default 1000ms
@@ -1162,6 +1164,70 @@ process.exit(result.exitCode);
 | Command fails + `onError: "continue"` | `0` | Continues, collects errors |
 | Manual `exit: N` | `N` (0-127) | Immediate termination |
 | `onError: "throw"` | N/A | Throws exception |
+
+## Timeout
+
+The `timeout` option sets a time limit (in seconds) on `steps`, `parallel`, or `fork` groups. If execution exceeds the limit, a `ShellError` is thrown with exit code 124 (consistent with GNU `timeout`).
+
+```javascript
+// Timeout on sequential steps
+await shellFlow({
+  commands: [
+    {
+      timeout: 10,
+      steps: [
+        'curl https://api.example.com/data',
+        'npm run process'
+      ]
+    }
+  ]
+});
+
+// Timeout on parallel group
+await shellFlow({
+  commands: [
+    {
+      timeout: 30,
+      parallel: [
+        'curl https://api1.com',
+        'curl https://api2.com'
+      ]
+    }
+  ]
+});
+
+// Combined with retry — each attempt is time-limited
+await shellFlow({
+  commands: [
+    {
+      timeout: 5,
+      retry: 3,
+      steps: ['curl https://flaky-service.com/health']
+    }
+  ]
+});
+
+// Timeout with onError: continue — logs timeout, moves on
+await shellFlow({
+  commands: [
+    {
+      timeout: 2,
+      steps: ['sleep 100'],
+      onError: 'continue'
+    },
+    { echo: 'Continued after timeout' }
+  ]
+});
+```
+
+**Behavior:**
+
+- Value is in **seconds** (consistent with `sleep`)
+- `timeout: 0` disables timeout (no time limit)
+- On timeout: throws `ShellError` with code `124` and message `"Command timed out after Ns"`
+- Respects `onError` policy: `stop` halts execution, `continue` moves to next step, `throw` re-throws
+- Wraps `retry` when both are present: timeout applies to the full retry cycle
+- Works with `steps`, `parallel`, and `fork` groups
 
 ## Error Handling
 

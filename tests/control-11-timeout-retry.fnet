@@ -1,0 +1,32 @@
+# Test: Timeout combined with Retry
+# Category: Control
+# Level: Advanced
+# Description: Timeout and retry working together
+
+commands:
+  - echo: "Test: Timeout + Retry combination"
+
+  # Step 1: Retry within timeout — command succeeds on first try
+  - timeout: 5
+    retry: 3
+    steps:
+      - echo: "Retry within timeout: attempt"
+
+  - echo: "Retry within timeout passed"
+
+  # Step 2: Timeout triggers, retry re-attempts
+  # Each attempt times out at 1s, but retry gives 2 more chances
+  # All attempts will timeout since sleep 10 > 1s timeout
+  # This tests that timeout + retry compose correctly
+  - steps:
+      - timeout: 1
+        retry:
+          attempts: 2
+          delay: 100
+        steps:
+          - sleep 10
+    onError: continue
+
+  - echo: "Timeout + retry combination handled gracefully"
+
+  - echo: "Timeout + retry tests completed!"

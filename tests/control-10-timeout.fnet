@@ -1,0 +1,42 @@
+# Test: Timeout
+# Category: Control
+# Level: Simple
+# Description: Timeout option for command time limits
+
+commands:
+  - echo: "Test: Timeout option"
+
+  # Step 1: Command that finishes within timeout (should pass)
+  - timeout: 5
+    steps:
+      - echo: "This finishes quickly"
+      - sleep 0.5
+      - echo: "Done within timeout"
+
+  - echo: "Fast command passed timeout check"
+
+  # Step 2: Parallel with timeout (should pass)
+  - timeout: 5
+    parallel:
+      - echo "parallel task 1"
+      - echo "parallel task 2"
+
+  - echo: "Parallel passed timeout check"
+
+  # Step 3: Command that exceeds timeout (should fail, caught by onError)
+  - steps:
+      - timeout: 2
+        steps:
+          - echo: "Starting slow command..."
+          - sleep 10
+          - echo: "This should not appear"
+    onError: continue
+
+  - echo: "Timeout exceeded was handled gracefully"
+
+  # Step 4: Timeout 0 means no timeout (disabled)
+  - timeout: 0
+    steps:
+      - echo: "No timeout applied"
+
+  - echo: "Timeout tests completed!"

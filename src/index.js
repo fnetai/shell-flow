@@ -2,7 +2,7 @@
 import { ProcessManager } from './core/index.js';
 
 // Import utility modules
-import { processTemplates, withRetry, normalizeRetryConfig } from './utils/index.js';
+import { processTemplates, withRetry, normalizeRetryConfig, withTimeout } from './utils/index.js';
 
 // Import executor modules
 import {
@@ -550,30 +550,42 @@ export default async function ({
                 }
               };
 
-              if (cmdRetryConfig) {
-                await withRetry(executeSteps, cmdRetryConfig);
+              const wrappedSteps = cmdRetryConfig
+                ? () => withRetry(executeSteps, cmdRetryConfig)
+                : executeSteps;
+
+              if (cmd.timeout) {
+                await withTimeout(wrappedSteps, cmd.timeout);
               } else {
-                await executeSteps();
+                await wrappedSteps();
               }
             } else if (cmd.parallel) {
               const executeParallel = async () => {
                 await this.handleParallel(cmd.parallel, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig, loopContext);
               };
 
-              if (cmdRetryConfig) {
-                await withRetry(executeParallel, cmdRetryConfig);
+              const wrappedParallel = cmdRetryConfig
+                ? () => withRetry(executeParallel, cmdRetryConfig)
+                : executeParallel;
+
+              if (cmd.timeout) {
+                await withTimeout(wrappedParallel, cmd.timeout);
               } else {
-                await executeParallel();
+                await wrappedParallel();
               }
             } else if (cmd.fork) {
               const executeFork = async () => {
                 await this.handleFork(cmd.fork, cmd.onError || onError, cmd.env || env, cmd.wdir || wdir, captureRoot, cmdRetryConfig, loopContext);
               };
 
-              if (cmdRetryConfig) {
-                await withRetry(executeFork, cmdRetryConfig);
+              const wrappedFork = cmdRetryConfig
+                ? () => withRetry(executeFork, cmdRetryConfig)
+                : executeFork;
+
+              if (cmd.timeout) {
+                await withTimeout(wrappedFork, cmd.timeout);
               } else {
-                await executeFork();
+                await wrappedFork();
               }
             }
           }

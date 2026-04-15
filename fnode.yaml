@@ -96,6 +96,13 @@ commands:
       - fnode cli --config control-01-exit || true
       - fnode cli --config control-02-exit-template || true
 
+  test-timeout:
+    description: Timeout option tests (time limits and timeout+retry combination)
+    usage: frun test-timeout
+    steps:
+      - fnode cli --config control-10-timeout
+      - fnode cli --config control-11-timeout-retry
+
   test-process-control:
     description: Manual process termination tests (requires user interaction)
     usage: frun test-process-control
@@ -255,5 +262,6 @@ commands:
       - frun test-time
       - frun test-assert
       - frun test-env-builtin
+      - frun test-timeout
       - frun test-exitcode
       - frun test-complex
