@@ -1,0 +1,51 @@
+# Test: Prompt Builtins
+# Category: Builtin (Interactive)
+# Level: Simple
+# Description: Interactive prompt operations (prompt::)
+# Note: This test requires user interaction — run manually
+
+commands:
+  - echo: "Test: Prompt builtins (prompt::)"
+  - echo: ""
+
+  # Confirm (shorthand) — defaults to confirm type
+  - prompt::approved: "Do you want to continue?"
+  - echo: "You answered: {{$.approved}}"
+
+  # Confirm with when
+  - when: "{{$.approved}}"
+    steps:
+      - echo: "Great, continuing!"
+  - when:
+      not: "{{$.approved}}"
+    steps:
+      - echo: "Ok, skipped."
+
+  # Confirm with default
+  - prompt::confirm::deploy:
+      message: "Deploy to production?"
+      default: false
+  - echo: "Deploy: {{$.deploy}}"
+
+  # Text input
+  - prompt::text::username:
+      message: "Enter your name:"
+  - echo: "Hello, {{$.username}}!"
+
+  # Text with default
+  - prompt::text::branch:
+      message: "Target branch:"
+      default: "main"
+  - echo: "Branch: {{$.branch}}"
+
+  # Abort mode (say 'n' to test abort, 'y' to continue)
+  - steps:
+      - prompt::confirm::danger:
+          message: "DELETE all data? (abort mode)"
+          abort: true
+      - echo: "Proceeding with delete..."
+    onError: continue
+  - echo: "Abort test done (if you said 'n', the step was aborted)"
+
+  - echo: ""
+  - echo: "Prompt tests completed!"

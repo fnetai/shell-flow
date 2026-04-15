@@ -213,10 +213,11 @@ commands:
   # === Interactive Tests (require user input / CTRL+C) ===
 
   test-interactive:
-    description: Interactive pause builtin test (requires user input)
+    description: Interactive pause and prompt builtin tests (requires user input)
     usage: frun test-interactive
     steps:
       - fnode cli --config builtin-03-pause
+      - fnode cli --config builtin-12-prompt
 
   test-signal:
     description: Signal cleanup tests (requires CTRL+C)

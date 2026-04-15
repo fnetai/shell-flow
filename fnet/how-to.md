@@ -30,6 +30,7 @@ yarn add @fnet/shell-flow
 - **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
 - **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
 - **Assertions** - Validate values, files, and conditions in workflows (`assert::equal`, `assert::exists`)
+- **Prompts** - Interactive user input with confirm and text types (`prompt::confirm`, `prompt::text`)
 - **Environment Variables** - Read, set, check, list, and delete env vars at runtime (`env::get`, `env::set`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
 - **Array Iteration** - Loop over parsed arrays and run commands per item (`each::`)
@@ -565,6 +566,96 @@ The `pause` command can be used in two ways:
 ```
 
 Control commands must contain only their respective key (`echo`, `sleep`, `exit`, `pause`, or `filemap`). The `exit` command accepts values 0-127, and `sleep` accepts non-negative numbers for seconds.
+
+### Prompt Expression
+
+The `prompt::` expression asks interactive questions and stores answers in the runtime context (`$`). Unlike `pause` (which just waits), `prompt` captures user decisions for use with `when` and other builtins.
+
+```javascript
+await shellFlow({
+  commands: [
+    // Shorthand: defaults to confirm (y/n)
+    { 'prompt::approved': 'Deploy to production?' },
+    // $.approved → true or false
+
+    // Explicit confirm with default
+    { 'prompt::confirm::deploy': {
+        message: 'Deploy to production?',
+        default: false
+      }
+    },
+
+    // Text input
+    { 'prompt::text::username': {
+        message: 'Enter your name:'
+      }
+    },
+    { echo: 'Hello, {{$.username}}!' },
+
+    // Text with default value
+    { 'prompt::text::branch': {
+        message: 'Target branch:',
+        default: 'main'
+      }
+    },
+
+    // Compose with when for branching
+    { 'prompt::should_deploy': 'Continue with deployment?' },
+    { when: '{{$.should_deploy}}',
+      steps: [
+        { 'prompt::text::target': {
+            message: 'Which environment?',
+            default: 'staging'
+          }
+        },
+        { echo: 'Deploying to {{$.target}}...' }
+      ]
+    }
+  ]
+});
+```
+
+**Prompt Types:**
+
+- `prompt::<name>: <question>` — Shorthand, defaults to `confirm` (y/n)
+- `prompt::confirm::<name>: <question_or_config>` — Yes/no question, returns `true`/`false`
+- `prompt::text::<name>: <question_or_config>` — Free text input, returns string
+
+**Config Object:**
+
+```typescript
+{
+  message: string;       // The question to display
+  default?: any;         // Default value (shown in prompt, used if Enter pressed)
+  abort?: boolean;       // If true, throw ShellError when user answers "no" (default: false)
+}
+```
+
+**Abort mode:**
+
+By default, `prompt::confirm` stores the result and continues — the developer decides what to do via `when`. With `abort: true`, a "no" answer throws a `ShellError`, stopping the workflow (respects `onError` policy).
+
+```javascript
+await shellFlow({
+  commands: [
+    // Default: result in $, developer branches with when
+    { 'prompt::approved': 'Include tests?' },
+    { when: '{{$.approved}}', steps: [{ echo: 'Running tests...' }] },
+
+    // Abort mode: "no" stops the workflow
+    { 'prompt::confirm::danger': {
+        message: 'DELETE all data?',
+        abort: true
+      }
+    }
+  ]
+});
+```
+
+**Relationship to pause:**
+
+- `pause` = "Wait for Enter" (no result, no decision, no `$` context)
+- `prompt` = "Ask a question" (result in `$`, composable with `when`)
 
 ## Expression-Based Builtins
 

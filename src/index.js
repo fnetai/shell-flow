@@ -55,7 +55,9 @@ import {
   executeEnvSet,
   executeEnvExists,
   executeEnvList,
-  executeEnvDelete
+  executeEnvDelete,
+  executePromptConfirm,
+  executePromptText
 } from './executors/index.js';
 
 // Import expression parser
@@ -63,7 +65,7 @@ import parseExpression from '@fnet/expression';
 
 // --- Builtin processor dispatch ---
 
-const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time', 'assert', 'env']);
+const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time', 'assert', 'env', 'prompt']);
 
 function parseStatement(processor, statement) {
   const colonIndex = statement.indexOf('::');
@@ -77,7 +79,14 @@ function parseStatement(processor, statement) {
 }
 
 async function dispatchBuiltin(processor, statement, input, originalInput, fullContext, runtimeContext) {
-  const { operation, contextName } = parseStatement(processor, statement);
+  // For prompt::, allow shorthand: prompt::<contextName> defaults to confirm operation
+  let operation, contextName;
+  if (processor === 'prompt' && !statement.includes('::')) {
+    operation = 'confirm';
+    contextName = statement.trim();
+  } else {
+    ({ operation, contextName } = parseStatement(processor, statement));
+  }
   switch (processor) {
     case 'json': await dispatchJson(operation, contextName, input, originalInput, fullContext, runtimeContext); break;
     case 'txt': await dispatchTxt(operation, contextName, input, fullContext, runtimeContext); break;
@@ -89,6 +98,7 @@ async function dispatchBuiltin(processor, statement, input, originalInput, fullC
     case 'time': await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
     case 'assert': await dispatchAssert(operation, contextName, input, fullContext, runtimeContext); break;
     case 'env': await dispatchEnv(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'prompt': await dispatchPrompt(operation, contextName, input, fullContext, runtimeContext); break;
   }
 }
 
@@ -195,6 +205,14 @@ async function dispatchEnv(operation, contextName, input, fullContext, runtimeCo
     case 'list': await executeEnvList(input, contextName, fullContext, runtimeContext); break;
     case 'delete': await executeEnvDelete(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown env operation: ${operation}. Supported: get, set, exists, list, delete`);
+  }
+}
+
+async function dispatchPrompt(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'confirm': await executePromptConfirm(input, contextName, fullContext, runtimeContext); break;
+    case 'text': await executePromptText(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown prompt operation: ${operation}. Supported: confirm, text`);
   }
 }
 

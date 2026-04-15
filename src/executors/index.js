@@ -57,4 +57,8 @@ export {
   executeEnvList,
   executeEnvDelete
 } from './env-builtins.js';
+export {
+  executePromptConfirm,
+  executePromptText
+} from './prompt-builtins.js';
 
