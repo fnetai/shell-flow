@@ -1,0 +1,25 @@
+# Test: Expression - Pipe (Shell Commands)
+# Category: Expression
+# Level: Simple
+# Description: Pipe stdout between shell commands
+
+commands:
+  - echo: "Test: Pipe expression (shell commands)"
+
+  # Simple pipe: echo → result
+  - pipe::simple:
+      - echo "hello world"
+  - echo: "Simple pipe: {{$.simple}}"
+
+  # Multi-step pipe: echo → transform via shell
+  - pipe::multi:
+      - echo "hello world"
+      - echo "processed"
+  - echo: "Multi pipe: {{$.multi}}"
+
+  # Pipe with real shell chaining
+  - pipe::version:
+      - node --version
+  - echo: "Node version via pipe: {{$.version}}"
+
+  - echo: "Pipe shell tests completed!"

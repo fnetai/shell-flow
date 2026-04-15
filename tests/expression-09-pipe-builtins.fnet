@@ -1,0 +1,34 @@
+# Test: Expression - Pipe with Builtins
+# Category: Expression
+# Level: Advanced
+# Description: Pipe combining shell commands and builtin expressions
+
+commands:
+  - echo: "Test: Pipe with builtins"
+
+  # Pipe: shell → txt builtin
+  - pipe::upper_result:
+      - echo "hello world"
+      - txt::upper::_piped
+  - echo: "Pipe shell→upper: {{$.upper_result}}"
+
+  # Pipe: shell → json parse
+  - pipe::parsed:
+      - echo '{"name":"John","age":30}'
+      - json::parse::_piped
+  - echo: "Pipe shell→json: {{$.parsed.name}}"
+
+  # Pipe: txt chain
+  - pipe::trimmed_upper:
+      - echo "  hello  "
+      - txt::trim::_piped
+      - txt::upper::_piped
+  - echo: "Pipe trim→upper: {{$.trimmed_upper}}"
+
+  # Pipe: encode chain
+  - pipe::encoded:
+      - echo "secret data"
+      - encode::base64::_piped
+  - echo: "Pipe shell→base64: {{$.encoded}}"
+
+  - echo: "Pipe builtin tests completed!"

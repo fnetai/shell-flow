@@ -140,7 +140,7 @@ commands:
       - echo "  ps aux | grep -E '(sleep|node|bun)' | grep -v grep"
 
   test-expression:
-    description: Expression syntax tests (capture, retry, composable, json, each)
+    description: Expression syntax tests (capture, retry, composable, json, each, pipe)
     usage: frun test-expression
     steps:
       - fnode cli --config expression-01-capture
@@ -148,6 +148,8 @@ commands:
       - fnode cli --config expression-03-composable
       - fnode cli --config expression-04-json
       - fnode cli --config expression-05-each
+      - fnode cli --config expression-08-pipe
+      - fnode cli --config expression-09-pipe-builtins
 
   test-txt:
     description: Text transformation builtin tests (upper, lower, trim, replace, split, join)

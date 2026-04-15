@@ -33,6 +33,7 @@ yarn add @fnet/shell-flow
 - **Environment Variables** - Read, set, check, list, and delete env vars at runtime (`env::get`, `env::set`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
 - **Array Iteration** - Loop over parsed arrays and run commands per item (`each::`)
+- **Pipe** - Chain step outputs sequentially, mixing shell commands and builtins (`pipe::`)
 
 ### Advanced Features
 
@@ -631,6 +632,56 @@ await shellFlow({
 - All builtins (`txt::`, `json::`, `capture::`, etc.) work inside the loop body
 - `onError` policy applies per-iteration, consistent with the rest of the pipeline
 - Loop-scoped variables do not leak outside the `each::` block
+
+### Pipe Expression
+
+Chain step outputs sequentially — each step's output feeds into the next. Mixes shell commands and builtin expressions in a single pipeline.
+
+**Syntax:** `pipe::<contextName>`
+
+```javascript
+await shellFlow({
+  commands: [
+    // Shell commands: each step's stdout feeds the next
+    { 'pipe::version': [
+        'node --version'
+      ]
+    },
+    { echo: 'Version: {{$.version}}' },
+
+    // Mix shell commands and builtins
+    { 'pipe::result': [
+        'echo "hello world"',
+        'txt::upper::_piped',
+        'encode::base64::_piped'
+      ]
+    },
+    { echo: 'Encoded: {{$.result}}' },
+
+    // Shell → JSON parse
+    { 'pipe::data': [
+        'echo \'{"name":"John","age":30}\'',
+        'json::parse::_piped'
+      ]
+    },
+    { echo: 'Name: {{$.data.name}}' }
+  ]
+});
+```
+
+**How it works:**
+
+- Steps execute sequentially within the pipe
+- **Shell commands:** stdout is captured and passed as input to the next step (trailing newline trimmed)
+- **Builtin expressions:** receive the previous step's output as input, store result in `$` context
+- The **final value** (last stdout or last builtin result) is stored in `$.contextName`
+- Intermediate builtin results are also accessible in `$` under their own context names
+
+**Key behaviors:**
+
+- Shell commands and builtins can be freely mixed in any order
+- An error in any pipe step stops the pipe (respects `onError` policy)
+- Works with all builtin processors: `txt::`, `json::`, `encode::`, `hash::`, etc.
 
 ### JSON Operations
 

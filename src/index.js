@@ -538,6 +538,49 @@ export default async function ({
                   }
                   nestedCommand = null;
                   break;
+                } else if (parsed.processor === 'pipe') {
+                  // Format: pipe::<contextName>
+                  const pipeName = parsed.statement.trim();
+                  const pipeSteps = Array.isArray(nestedCommand) ? nestedCommand : [nestedCommand];
+
+                  // Internal pipe state — flows from step to step
+                  let pipeValue = null;
+
+                  for (const pipeStep of pipeSteps) {
+                    // Process templates for this step (includes current context)
+                    const processedStep = processTemplates(pipeStep, effectiveContext);
+
+                    if (typeof processedStep === 'string' && processedStep.includes('::')) {
+                      // Check if it's a builtin expression
+                      const parsedPipe = parseExpression({ expression: processedStep });
+                      if (parsedPipe && parsedPipe.processor && BUILTIN_PROCESSORS.has(parsedPipe.processor)) {
+                        // Builtin: use pipeValue as input, store result in _pipe intermediate
+                        const { operation, contextName } = parseStatement(parsedPipe.processor, parsedPipe.statement);
+                        const builtinInput = pipeValue !== null ? pipeValue : processedStep;
+                        await dispatchBuiltin(parsedPipe.processor, parsedPipe.statement, builtinInput, builtinInput, effectiveContext, runtimeContext);
+                        // Read back the result from runtimeContext
+                        pipeValue = runtimeContext[contextName];
+                        continue;
+                      }
+                    }
+
+                    if (typeof processedStep === 'string') {
+                      // Shell command: capture stdout, use as next pipeValue
+                      const pipeCapture = { items: [] };
+                      await executeCommand(processedStep, env, wdir, pipeCapture, processManager);
+                      if (pipeCapture.items.length > 0) {
+                        pipeValue = pipeCapture.items[pipeCapture.items.length - 1].stdout;
+                        if (typeof pipeValue === 'string') {
+                          pipeValue = pipeValue.trimEnd();
+                        }
+                      }
+                    }
+                  }
+
+                  // Store final pipe result in $ context
+                  runtimeContext[pipeName] = pipeValue;
+                  nestedCommand = null;
+                  break;
                 } else if (BUILTIN_PROCESSORS.has(parsed.processor)) {
                   const originalInput = typeof originalCmd === 'object' && originalCmd[expressionKey]
                     ? originalCmd[expressionKey]
