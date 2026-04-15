@@ -27,6 +27,8 @@ commands:
       - fnode deploy
 
   prepare-simple-server:
+    description: Build and compile the simple-server test helper
+    usage: frun prepare-simple-server
     wdir: tests/simple-server
     steps:
       - fnode build
@@ -37,43 +39,66 @@ commands:
 
   test-basic:
     description: Simple commands and script mode tests
+    usage: frun test-basic
     steps:
       - fnode cli --config basic-01-simple-commands
       - fnode cli --config basic-02-script-mode
 
   test-builtin:
-    - fnode cli --config builtin-01-echo
-    - fnode cli --config builtin-02-sleep
+    description: Echo and sleep builtin tests
+    usage: frun test-builtin
+    steps:
+      - fnode cli --config builtin-01-echo
+      - fnode cli --config builtin-02-sleep
 
   test-template:
-    - fnode cli --config template-01-required
-    - fnode cli --config template-02-advanced
+    description: Template variable resolution tests (required and advanced)
+    usage: frun test-template
+    steps:
+      - fnode cli --config template-01-required
+      - fnode cli --config template-02-advanced
 
   test-parallel:
-    - fnode cli --config parallel-01-simple
-    - fnode cli --config parallel-02-fork
-    - fnode cli --config parallel-03-nested
+    description: Parallel, fork, and nested parallel execution tests
+    usage: frun test-parallel
+    steps:
+      - fnode cli --config parallel-01-simple
+      - fnode cli --config parallel-02-fork
+      - fnode cli --config parallel-03-nested
 
   test-error:
-    - fnode cli --config error-01-stop || true
-    - fnode cli --config error-02-continue
-    - fnode cli --config error-03-continue-capture
+    description: Error handling policy tests (stop, continue, capture)
+    usage: frun test-error
+    steps:
+      - fnode cli --config error-01-stop || true
+      - fnode cli --config error-02-continue
+      - fnode cli --config error-03-continue-capture
 
   test-retry:
-    - fnode cli --config retry-01-simple
-    - fnode cli --config retry-02-configured
-    - fnode cli --config retry-03-global
+    description: Retry mechanism tests (simple, configured, global)
+    usage: frun test-retry
+    steps:
+      - fnode cli --config retry-01-simple
+      - fnode cli --config retry-02-configured
+      - fnode cli --config retry-03-global
 
   test-env:
-    - fnode cli --config env-01-wdir
-    - fnode cli --config env-02-variables
+    description: Environment variable and working directory tests
+    usage: frun test-env
+    steps:
+      - fnode cli --config env-01-wdir
+      - fnode cli --config env-02-variables
 
   test-control:
-    - fnode cli --config control-01-exit || true
-    - fnode cli --config control-02-exit-template || true
+    description: Exit command and exit template control flow tests
+    usage: frun test-control
+    steps:
+      - fnode cli --config control-01-exit || true
+      - fnode cli --config control-02-exit-template || true
 
   test-process-control:
     description: Manual process termination tests (requires user interaction)
+    usage: frun test-process-control
     steps:
       - echo "=== Process Control Tests ==="
       - echo ""
@@ -101,43 +126,71 @@ commands:
       - echo "  ps aux | grep -E '(sleep|node|bun)' | grep -v grep"
 
   test-expression:
-    - fnode cli --config expression-01-capture
-    - fnode cli --config expression-02-retry
-    - fnode cli --config expression-03-composable
-    - fnode cli --config expression-04-json
-    - fnode cli --config expression-05-each
+    description: Expression syntax tests (capture, retry, composable, json, each)
+    usage: frun test-expression
+    steps:
+      - fnode cli --config expression-01-capture
+      - fnode cli --config expression-02-retry
+      - fnode cli --config expression-03-composable
+      - fnode cli --config expression-04-json
+      - fnode cli --config expression-05-each
 
   test-txt:
-    - fnode cli --config builtin-05-txt
+    description: Text transformation builtin tests (upper, lower, trim, replace, split, join)
+    usage: frun test-txt
+    steps:
+      - fnode cli --config builtin-05-txt
 
   test-file:
-    - fnode cli --config builtin-06-file
+    description: File operation builtin tests (read, write, delete, copy, list)
+    usage: frun test-file
+    steps:
+      - fnode cli --config builtin-06-file
 
   test-http:
-    - fnode cli --config builtin-07-http
+    description: HTTP request builtin tests (GET, POST, PUT, DELETE)
+    usage: frun test-http
+    steps:
+      - fnode cli --config builtin-07-http
 
   test-encode:
-    - fnode cli --config builtin-08-encode
+    description: Encoding and hashing builtin tests (base64, URL, SHA256, MD5)
+    usage: frun test-encode
+    steps:
+      - fnode cli --config builtin-08-encode
 
   test-time:
-    - fnode cli --config builtin-09-time
+    description: Time operation builtin tests (now, format, parse, add, diff)
+    usage: frun test-time
+    steps:
+      - fnode cli --config builtin-09-time
 
   test-exitcode:
-    - fnode cli --config test-exitcode
-    - fnode cli --config test-exitcode-error || true
-    - fnode cli --config test-exitcode-manual || true
+    description: Exit code propagation and validation tests
+    usage: frun test-exitcode
+    steps:
+      - fnode cli --config test-exitcode
+      - fnode cli --config test-exitcode-error || true
+      - fnode cli --config test-exitcode-manual || true
 
   test-complex:
-    - fnode cli --config complex-01-mixed-execution
-    - fnode cli --config complex-02-full-features
+    description: Complex mixed-mode execution and full feature integration tests
+    usage: frun test-complex
+    steps:
+      - fnode cli --config complex-01-mixed-execution
+      - fnode cli --config complex-02-full-features
 
   # === Interactive Tests (require user input / CTRL+C) ===
 
   test-interactive:
-    - fnode cli --config builtin-03-pause
+    description: Interactive pause builtin test (requires user input)
+    usage: frun test-interactive
+    steps:
+      - fnode cli --config builtin-03-pause
 
   test-signal:
     description: Signal cleanup tests (requires CTRL+C)
+    usage: frun test-signal
     steps:
       - echo "=== Signal Cleanup Tests ==="
       - echo ""
@@ -161,7 +214,10 @@ commands:
   # === Tests that throw errors (run separately) ===
 
   test-throw:
-    - fnode cli --config error-04-throw
+    description: Error throw policy test (errors re-thrown to caller)
+    usage: frun test-throw
+    steps:
+      - fnode cli --config error-04-throw
 
   # === Run All Automated Tests ===
 
