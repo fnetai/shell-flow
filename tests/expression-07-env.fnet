@@ -1,0 +1,35 @@
+# Test: Expression - Env with Runtime Context
+# Category: Expression
+# Level: Advanced
+# Description: Environment variable operations combined with capture, assert, and $ context
+
+commands:
+  - echo: "Test: Env expressions with $ context"
+
+  # Step 1: Set env var and verify via shell command
+  - env::set::s1: ["SHELLFLOW_EXPR_TEST", "workflow_value"]
+  - capture::shell_check::echo $SHELLFLOW_EXPR_TEST
+  - echo: "Shell sees env var: {{$.shell_check.items.0.stdout}}"
+
+  # Step 2: Get it back via env:: and assert
+  - env::get::fetched: SHELLFLOW_EXPR_TEST
+  - assert::equal::env_check: ["{{$.fetched}}", "workflow_value"]
+  - echo: "Assert env value matches: {{$.env_check.passed}}"
+
+  # Step 3: Read HOME and assert it exists
+  - env::get::home: HOME
+  - assert::truthy::home_check: "{{$.home}}"
+  - echo: "HOME is set: {{$.home_check.passed}}"
+
+  # Step 4: Set from captured output
+  - capture::node_ver::node --version
+  - env::set::s2: ["SHELLFLOW_NODE_VER", "{{$.node_ver.items.0.stdout}}"]
+  - env::get::ver_back: SHELLFLOW_NODE_VER
+  - assert::contains::ver_check: ["{{$.ver_back}}", "v"]
+  - echo: "Node version in env: {{$.ver_check.passed}}"
+
+  # Cleanup
+  - env::delete::d1: SHELLFLOW_EXPR_TEST
+  - env::delete::d2: SHELLFLOW_NODE_VER
+
+  - echo: "Env expression tests completed!"

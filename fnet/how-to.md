@@ -30,6 +30,7 @@ yarn add @fnet/shell-flow
 - **Encoding/Hashing** - Base64, URL encoding, SHA256, MD5 (`encode::*`, `hash::*`)
 - **Time Operations** - Timestamps, formatting, parsing (`time::now`, `time::format`)
 - **Assertions** - Validate values, files, and conditions in workflows (`assert::equal`, `assert::exists`)
+- **Environment Variables** - Read, set, check, list, and delete env vars at runtime (`env::get`, `env::set`)
 - **Capture & Retry** - Capture command output and retry with backoff (`capture::`, `retry::`)
 - **Array Iteration** - Loop over parsed arrays and run commands per item (`each::`)
 
@@ -978,6 +979,48 @@ await shellFlow({
   ]
 });
 ```
+
+### Environment Variable Operations
+
+Read, set, check, list, and delete environment variables at runtime. Unlike the static `env` key on command groups, `env::` operations are dynamic — they can use values from the `$` runtime context and make changes visible to subsequent shell commands.
+
+```javascript
+await shellFlow({
+  commands: [
+    // Read an env var into $ context
+    { 'env::get::home': 'HOME' },
+    { echo: 'Home: {{$.home}}' },
+
+    // Set an env var (visible to subsequent commands)
+    { 'env::set::result': ['MY_VAR', 'my_value'] },
+
+    // Set from $ context (e.g., captured output)
+    { 'capture::ver': 'node --version' },
+    { 'env::set::result2': ['NODE_VER', '{{$.ver.items.0.stdout}}'] },
+
+    // Check if env var exists
+    { 'env::exists::check': 'MY_VAR' },
+    { echo: 'Exists: {{$.check}}' },  // true
+
+    // List env vars matching a pattern
+    { 'env::list::vars': 'MY_*' },
+
+    // Delete an env var
+    { 'env::delete::del': 'MY_VAR' },
+    { echo: 'Deleted: {{$.del.deleted}}' }  // true
+  ]
+});
+```
+
+**Environment Operations:**
+
+- `env::get::<name>: <varName>` - Read env var into `$` context (returns `null` if not set)
+- `env::set::<name>: [varName, value]` or `{name, value}` - Set env var in `process.env`
+- `env::exists::<name>: <varName>` - Check if env var is defined (returns boolean)
+- `env::list::<name>: <pattern>` - List env vars matching a glob pattern (supports `*` wildcard)
+- `env::delete::<name>: <varName>` - Remove env var from `process.env`
+
+**Key difference from static `env`:** The static `env` key on command groups sets env vars before commands run. `env::` operations happen *during* execution, can read values dynamically, and can propagate captured output or computed values to subsequent shell commands.
 
 ## Exit Control
 

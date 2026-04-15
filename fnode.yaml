@@ -172,6 +172,13 @@ commands:
       - fnode cli --config builtin-10-assert
       - fnode cli --config expression-06-assert
 
+  test-env-builtin:
+    description: Environment variable builtin and expression tests (get, set, exists, list, delete)
+    usage: frun test-env-builtin
+    steps:
+      - fnode cli --config builtin-11-env
+      - fnode cli --config expression-07-env
+
   test-exitcode:
     description: Exit code propagation and validation tests
     usage: frun test-exitcode
@@ -247,5 +254,6 @@ commands:
       - frun test-encode
       - frun test-time
       - frun test-assert
+      - frun test-env-builtin
       - frun test-exitcode
       - frun test-complex

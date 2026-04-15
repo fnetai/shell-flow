@@ -50,4 +50,11 @@ export {
   executeAssertLt,
   executeAssertLte
 } from './assert-builtins.js';
+export {
+  executeEnvGet,
+  executeEnvSet,
+  executeEnvExists,
+  executeEnvList,
+  executeEnvDelete
+} from './env-builtins.js';
 

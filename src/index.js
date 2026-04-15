@@ -50,7 +50,12 @@ import {
   executeAssertGt,
   executeAssertGte,
   executeAssertLt,
-  executeAssertLte
+  executeAssertLte,
+  executeEnvGet,
+  executeEnvSet,
+  executeEnvExists,
+  executeEnvList,
+  executeEnvDelete
 } from './executors/index.js';
 
 // Import expression parser
@@ -58,7 +63,7 @@ import parseExpression from '@fnet/expression';
 
 // --- Builtin processor dispatch ---
 
-const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time', 'assert']);
+const BUILTIN_PROCESSORS = new Set(['json', 'txt', 'file', 'http', 'encode', 'decode', 'hash', 'time', 'assert', 'env']);
 
 function parseStatement(processor, statement) {
   const colonIndex = statement.indexOf('::');
@@ -83,6 +88,7 @@ async function dispatchBuiltin(processor, statement, input, originalInput, fullC
     case 'hash': await dispatchHash(operation, contextName, input, fullContext, runtimeContext); break;
     case 'time': await dispatchTime(operation, contextName, input, fullContext, runtimeContext); break;
     case 'assert': await dispatchAssert(operation, contextName, input, fullContext, runtimeContext); break;
+    case 'env': await dispatchEnv(operation, contextName, input, fullContext, runtimeContext); break;
   }
 }
 
@@ -178,6 +184,17 @@ async function dispatchAssert(operation, contextName, input, fullContext, runtim
     case 'lt': await executeAssertLt(input, contextName, fullContext, runtimeContext); break;
     case 'lte': await executeAssertLte(input, contextName, fullContext, runtimeContext); break;
     default: throw new Error(`Unknown assert operation: ${operation}. Supported: equal, not_equal, contains, exists, truthy, gt, gte, lt, lte`);
+  }
+}
+
+async function dispatchEnv(operation, contextName, input, fullContext, runtimeContext) {
+  switch (operation) {
+    case 'get': await executeEnvGet(input, contextName, fullContext, runtimeContext); break;
+    case 'set': await executeEnvSet(input, contextName, fullContext, runtimeContext); break;
+    case 'exists': await executeEnvExists(input, contextName, fullContext, runtimeContext); break;
+    case 'list': await executeEnvList(input, contextName, fullContext, runtimeContext); break;
+    case 'delete': await executeEnvDelete(input, contextName, fullContext, runtimeContext); break;
+    default: throw new Error(`Unknown env operation: ${operation}. Supported: get, set, exists, list, delete`);
   }
 }
 

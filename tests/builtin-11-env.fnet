@@ -1,0 +1,36 @@
+# Test: Env Builtins
+# Category: Builtin
+# Level: Simple
+# Description: Environment variable operations (env::)
+
+commands:
+  - echo: "Test: Env builtins (env::)"
+
+  # Set an env var
+  - env::set::set1: ["SHELLFLOW_TEST_VAR", "hello123"]
+  - echo: "env::set result: {{$.set1.set}}"
+
+  # Get the env var we just set
+  - env::get::val1: SHELLFLOW_TEST_VAR
+  - echo: "env::get value: {{$.val1}}"
+
+  # Check existence
+  - env::exists::exists1: SHELLFLOW_TEST_VAR
+  - echo: "env::exists (set var): {{$.exists1}}"
+
+  - env::exists::exists2: SHELLFLOW_NONEXISTENT_VAR_12345
+  - echo: "env::exists (missing var): {{$.exists2}}"
+
+  # List matching vars
+  - env::list::listed: "SHELLFLOW_*"
+  - echo: "env::list found SHELLFLOW_TEST_VAR"
+
+  # Delete the env var
+  - env::delete::del1: SHELLFLOW_TEST_VAR
+  - echo: "env::delete existed: {{$.del1.deleted}}"
+
+  # Verify it's gone
+  - env::exists::gone: SHELLFLOW_TEST_VAR
+  - echo: "env::exists after delete: {{$.gone}}"
+
+  - echo: "Env builtin tests completed!"
