@@ -44,6 +44,7 @@ yarn add @fnet/shell-flow
 - **Conditional Execution** - Skip steps based on runtime conditions (`when`)
 - **Error Handling** - Customizable policies: stop, continue, throw
 - **Timeout** - Time limits for steps, parallel, and fork groups
+- **Signal Handling** - Graceful SIGINT/SIGTERM handling with automatic child process cleanup
 - **Output Capture** - Store and access command outputs for processing
 - **Environment Management** - Flexible environment variable configuration
 - **Composable Expressions** - Nest expressions for complex workflows
@@ -92,6 +93,8 @@ yarn add @fnet/shell-flow
     maxDelay?: number;
     codes?: number[];
   };
+  gracefulTimeout?: number;              // Graceful termination window in ms (default: 1500)
+  processManager?: ProcessManager;       // External ProcessManager for shared lifecycle
 }
 ```
 
@@ -1371,6 +1374,113 @@ await shellFlow({
 - Respects `onError` policy: `stop` halts execution, `continue` moves to next step, `throw` re-throws
 - Wraps `retry` when both are present: timeout applies to the full retry cycle
 - Works with `steps`, `parallel`, and `fork` groups
+
+## Process Management & Signal Handling
+
+shell-flow tracks every child process it spawns and cleans them up automatically on workflow completion, errors, or OS signals. This is especially important for `fork` (background) and `parallel` workflows that spawn long-running processes like servers.
+
+### Automatic Lifecycle
+
+Every `executeCommand` call registers its child process with a `ProcessManager`. When the workflow completes (success or error) or receives `SIGINT`/`SIGTERM`, all tracked processes are terminated:
+
+1. Send `SIGTERM` to all alive processes (graceful shutdown request)
+2. Poll every 250ms, waiting up to `gracefulTimeout` ms for processes to exit
+3. Any survivors are force-killed with `SIGKILL`
+4. Uses `tree-kill` to terminate entire process trees (not just the direct child)
+
+This means you can safely `fork` servers, CLI tools, or any long-running process — pressing CTRL+C will terminate them all, including child processes they spawned.
+
+### gracefulTimeout
+
+Controls how long to wait for graceful shutdown before escalating to `SIGKILL`.
+
+```javascript
+await shellFlow({
+  gracefulTimeout: 5000,  // Wait up to 5s for SIGTERM to work (default: 1500ms)
+  fork: [
+    'node slow-shutdown-server.js'  // Needs time to close connections
+  ]
+});
+```
+
+**Defaults:**
+
+- Process cleanup during normal flow: `1500ms`
+- Signal-triggered cleanup: `gracefulTimeout` (configurable)
+- Workflow exit (`dispose`): `500ms`
+- Exit command cleanup: `2000ms` (hardcoded for safety)
+
+### Signal Handling
+
+The ProcessManager registers handlers for:
+
+- `SIGINT` (CTRL+C) → graceful cleanup, then exit code 130
+- `SIGTERM` → graceful cleanup, then exit code 143
+- `uncaughtException` → emergency cleanup, exit 1
+- `unhandledRejection` → emergency cleanup, exit 1
+
+After cleanup, the original signal is re-sent to the process so parent processes (shells, orchestrators, CI runners) observe the expected exit behavior.
+
+### Fork with Signal Handling
+
+```javascript
+await shellFlow({
+  commands: [
+    { echo: 'Starting development environment...' },
+    {
+      fork: [
+        'node server.js',
+        'npm run watch',
+        'npm run dev-client'
+      ]
+    },
+    { echo: 'All services started. Press CTRL+C to stop.' },
+    { pause: true }
+    // CTRL+C → all 3 forked processes terminated cleanly
+  ]
+});
+```
+
+### External ProcessManager
+
+For advanced scenarios (e.g., wrapping shell-flow in another orchestrator), you can pass your own `ProcessManager` instance. This lets multiple `shellFlow` invocations share a lifecycle:
+
+```javascript
+import shellFlow, { ProcessManager } from '@fnet/shell-flow';
+
+const pm = new ProcessManager({ gracefulTimeout: 3000 });
+
+try {
+  // Multiple invocations share the same process tracking
+  await shellFlow({ commands: [...], processManager: pm });
+  await shellFlow({ commands: [...], processManager: pm });
+} finally {
+  await pm.dispose();  // Cleanup at the end
+}
+```
+
+**Key differences when using external ProcessManager:**
+
+- Signal handlers are added by the external PM, not per-invocation
+- Cleanup happens only when the caller calls `dispose()`
+- Multiple invocations can share process tracking for coordinated shutdown
+
+### Zombie Process Prevention
+
+The ProcessManager is designed to prevent orphaned processes. All test scenarios in `tests/signal-*.fnet` and `tests/test-ctrl-c-*.fnet` verify that:
+
+- `fork` + CTRL+C terminates all background processes
+- `parallel` + CTRL+C terminates all parallel tasks
+- Nested `steps` + CTRL+C terminates every level
+- Process trees (servers that spawn workers) are fully cleaned up
+- Bad-citizen processes that ignore SIGTERM get SIGKILL
+
+To verify no zombies after a test:
+
+```bash
+# Should return nothing if cleanup worked
+ps aux | grep -E '(sleep|node|bun)' | grep -v grep
+```
 
 ## Conditional Execution (when)
 
