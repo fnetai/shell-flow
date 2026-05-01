@@ -6,3 +6,4 @@
 .npmrc
 .vscode
 __pycache__
+.claude/settings.json
